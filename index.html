@@ -285,6 +285,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
   const label=(t,col)=>{const c=document.createElement('canvas');c.width=512;c.height=64;const x=c.getContext('2d');x.font='500 30px "IBM Plex Mono",monospace';x.fillStyle=col;x.textAlign='center';x.textBaseline='middle';x.fillText(t,256,34);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));s.scale.set(4,.5,1);s.center.set(.5,1.9);return s};
   const sample=d=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',d);hid.append(p);let out=[];try{const L=p.getTotalLength(),n=Math.max(8,Math.min(120,Math.round(L/4)));for(let i=0;i<=n;i++){const q=p.getPointAtLength(L*i/n);out.push([q.x,q.y])}}catch(e){}p.remove();return out};
 
+  const upQ=v=>{const Y=v.clone().normalize(),U=new THREE.Vector3(0,1,0);let Z=U.clone().sub(Y.clone().multiplyScalar(U.dot(Y)));if(Z.lengthSq()<.02)Z=new THREE.Vector3(0,0,1).sub(Y.clone().multiplyScalar(Y.z));Z.normalize().multiplyScalar(-1);const X=new THREE.Vector3().crossVectors(Y,Z);return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(X,Y,Z))};
   function build(){
     if(!rend){rend=new THREE.WebGLRenderer({canvas:cv,antialias:true});rend.setPixelRatio(Math.min(devicePixelRatio,2));cam=new THREE.PerspectiveCamera(40,1,.1,300);oc=new THREE.OrbitControls(cam,cv);oc.enableDamping=true;oc.minDistance=8;oc.maxDistance=70;oc.autoRotateSpeed=.6;oc.autoRotate=true;let rt=0;oc.addEventListener('start',()=>{clearTimeout(rt);oc.autoRotate=false});oc.addEventListener('end',()=>{clearTimeout(rt);rt=setTimeout(()=>{oc.autoRotate=true},2500)});cam.position.set(0,17,19);oc.update()}
     const fg=css('--fg'),bg=css('--bg');rend.setClearColor(new THREE.Color(bg),1);
@@ -309,7 +310,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       if(k>0){const l=ringLine(R3,fg);l.quaternion.copy(q);sc.add(l);rings.push(l)}});
     const K=10/R,info={};
     list.forEach(p=>{const pl=place[p.id],P=new THREE.Vector3(Math.cos(pl.ang)*R3,0,Math.sin(pl.ang)*R3).applyQuaternion(pl.q),T=new THREE.Vector3(-Math.sin(pl.ang),0,Math.cos(pl.ang)).applyQuaternion(pl.q),Y=P.clone().normalize(),Z=new THREE.Vector3().crossVectors(T,Y);
-      info[p.id]={P,T,out:new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(T,Y,Z))}});
+      info[p.id]={P,T,out:upQ(P)}});
     const links=[],dgs={};discs.length=0;
     list.forEach(p=>{
       const grp=new THREE.Group(),inner=new THREE.Group(),a0=Math.atan2(p.y,p.x),I=info[p.id];
@@ -323,7 +324,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       let src=null;if(p.type==='image'&&p.asset)src=blobUrl(p.asset);else if(p.type==='model'&&p.asset&&thumbs[p.asset])src=thumbs[p.asset][0];
       if(src)tex(src,t=>{mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true});
       // drawing sits on its point; a connected drawing slides halfway toward its partner so the two meet
-      const s=1/40*2.5,gk=grpOf[find(p.id)].length>1?find(p.id):null,tgt=gk?(dgs[gk]=dgs[gk]||{g:new THREE.Group(),ids:[]}):null;if(tgt){tgt.ids.push(p.id);if(!tgt.added){tgt.added=1;sc.add(tgt.g)}}
+      const s=1/40*2.5*.5,gk=grpOf[find(p.id)].length>1?find(p.id):null,tgt=gk?(dgs[gk]=dgs[gk]||{g:new THREE.Group(),ids:[]}):null;if(tgt){tgt.ids.push(p.id);if(!tgt.added){tgt.added=1;sc.add(tgt.g)}}
       (p.paths||[]).forEach(d=>{const pts2=sample(d).map(([x,y])=>new THREE.Vector3(x*s,0,y*s));if(pts2.length>1)(tgt?tgt.g:inner).add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2),new THREE.LineBasicMaterial({color:fg})))});
       disc.userData.gk=gk;grp.add(inner);if(p.title)grp.add(label(p.title.slice(0,26),fg));sc.add(grp);
       const flat=new THREE.Vector3(Math.cos(a0)*R3,0,Math.sin(a0)*R3);
@@ -334,7 +335,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
   function size(){if(!rend)return;const w=cv.clientWidth,hh=cv.clientHeight;if(!w||!hh)return;rend.setSize(w,hh,false);cam.aspect=w/hh;cam.updateProjectionMatrix()}
   function loop(){if(!on)return;raf=requestAnimationFrame(loop);mix+=((sphere?1:0)-mix)*.07;
     rings.forEach(l=>l.material.opacity=.3*mix);
-    nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);n.inner.quaternion.identity().slerp(n.out,mix)});const ix={};nodes.forEach(n=>ix[n.id]=n);const cen={};Object.entries(nodes.dgs||{}).forEach(([k,d])=>{const c=new THREE.Vector3();d.ids.forEach(id=>c.add(ix[id].grp.position));c.multiplyScalar(1/d.ids.length);const dir=c.clone();if(dir.length()<.01)dir.set(0,1,0);dir.normalize();d.g.position.lerpVectors(c,c.clone().add(new THREE.Vector3(0,2.4,0)),mix);cen[k]=d.g.position;d.g.quaternion.identity().slerp(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir),mix)});(nodes.links||[]).forEach(k=>{const A=ix[k.a],C=cen[k.gk];if(!A||!C)return;const ps=k.l.geometry.attributes.position;ps.setXYZ(0,A.grp.position.x,A.grp.position.y,A.grp.position.z);ps.setXYZ(1,C.x,C.y,C.z);ps.needsUpdate=true;k.l.computeLineDistances();k.l.visible=true;k.l.material.opacity=.6});oc.update();rend.render(sc,cam)}
+    nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);n.inner.quaternion.identity().slerp(n.out,mix)});const ix={};nodes.forEach(n=>ix[n.id]=n);const cen={};Object.entries(nodes.dgs||{}).forEach(([k,d])=>{const c=new THREE.Vector3();d.ids.forEach(id=>c.add(ix[id].grp.position));c.multiplyScalar(1/d.ids.length);const dir=c.clone();if(dir.length()<.01)dir.set(0,1,0);dir.normalize();d.g.position.lerpVectors(c,c.clone().add(new THREE.Vector3(0,2.4,0)),mix);cen[k]=d.g.position;d.g.quaternion.identity().slerp(upQ(dir),mix)});(nodes.links||[]).forEach(k=>{const A=ix[k.a],C=cen[k.gk];if(!A||!C)return;const ps=k.l.geometry.attributes.position;ps.setXYZ(0,A.grp.position.x,A.grp.position.y,A.grp.position.z);ps.setXYZ(1,C.x,C.y,C.z);ps.needsUpdate=true;k.l.computeLineDistances();k.l.visible=true;k.l.material.opacity=.6});oc.update();rend.render(sc,cam)}
   const rebuild=()=>{if(!on)return;clearTimeout(timer);timer=setTimeout(build,250)};
   const tg=h('button',{id:'v3t',title:'Switch between the flat circle (editable) and the sphere of rings'},'Sphere');$('header').insertBefore(tg,$('#arr'));
   tg.onclick=()=>{on=!on;tg.textContent=on?'Circle':'Sphere';cv.style.display=on?'block':'none';$('#map').style.visibility=on?'hidden':'';$('#add').style.visibility=on?'hidden':'';
