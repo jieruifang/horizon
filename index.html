@@ -243,7 +243,7 @@ function panel(){
     h('div',{class:'ph'},h('span',{},'Point'),h('button',{class:'x','aria-label':'close',onclick:()=>{draft=null;sel=null;connFrom=null;drawId=null;cur=null;svg.style.cursor='';draw();panel()}},'×')),
     h('label',{},'Name'),h('input',{value:p.title||'',onchange:e=>{p.title=e.target.value;save()}}),
     h('label',{},'Type'),h('select',{onchange:e=>{p.type=e.target.value;save();panel()}},opt(TYPES,p.type)),
-    ...(p.type==='text'?[h('label',{},'Text'),h('div',{class:'hint'},'Optional. Shown on the map under the name.'),h('textarea',{value:p.text||'',onchange:e=>{p.text=e.target.value;save()}})]:[]));
+    ...(p.type==='text'?[h('label',{},'Text'),h('textarea',{value:p.text||'',onchange:e=>{p.text=e.target.value;save()}})]:[]));
   if(p.type!=='text'){
     if(assets){const st=h('div',{class:'hint',style:'margin-top:4px'});
       el.append(h('input',{type:'file',style:'margin-top:6px',accept:p.type==='image'?'image/*':'.ply,.glb,.gltf',onchange:async e=>{const f=e.target.files[0];if(!f)return;st.textContent='Uploading…';
