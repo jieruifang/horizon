@@ -15,7 +15,7 @@ header{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1p
 header b{flex:1;font-weight:500;font-size:14px;letter-spacing:0}
 button,select,input,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--dim);padding:5px 8px;border-radius:0}
 button{cursor:pointer}button:hover{background:var(--fg);color:var(--bg)}
-#stage{flex:1;display:flex;min-height:0}#mapwrap{flex:1;position:relative;min-width:0}#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}#add{position:absolute;left:12px;top:12px}
+#stage{flex:1;display:flex;min-height:0}#mapwrap{flex:1;position:relative;min-width:0}#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}#add{position:absolute;left:12px;top:12px}#conn{position:absolute;left:128px;top:12px}#conn.on{background:var(--fg);color:var(--bg)}
 #note{display:none;padding:6px 10px;border-bottom:1px solid var(--line);color:var(--dim);font-size:12px}
 #panel{width:0;flex:none;background:var(--bg);border:0 solid var(--line);padding:0;margin:0;overflow:hidden;opacity:0;box-sizing:border-box;transition:width .35s ease,padding .35s ease,margin .35s ease,opacity .3s ease}#panel.open{width:var(--pw,340px);padding:0 18px 18px;margin:12px 0 12px 12px;border-width:1px;opacity:1;overflow-x:hidden;overflow-y:auto}#panel>*{min-width:calc(var(--pw,340px) - 40px);max-width:100%}#panel .ph{position:sticky;top:0;z-index:2;background:var(--bg);display:flex;align-items:center;justify-content:space-between;padding:10px 0;margin:0 0 4px;border-bottom:1px solid var(--line);color:var(--dim);font-size:11px}@media(min-width:641px){body.is3d #stage{position:relative}body.is3d #panel{position:absolute;left:0;top:0;bottom:0;z-index:7}body.is3d #grip{display:none!important}}
 #v3rot.on,#bar3 button.on{background:var(--fg);color:var(--bg)}#panel .hint{color:var(--dim);font-size:11px;line-height:1.5;margin:0 0 8px}body.rs #panel{transition:none}body.rs{user-select:none;cursor:col-resize}#grip{flex:none;width:0;position:relative;display:none;z-index:6}#panel.open+#grip{display:block}#grip::after{content:'';position:absolute;top:0;bottom:0;left:-5px;width:10px;cursor:col-resize;touch-action:none}#grip:hover::after,#grip.on::after{background:linear-gradient(to right,transparent 4px,var(--dim) 4px,var(--dim) 6px,transparent 6px)}
@@ -32,7 +32,7 @@ details{box-sizing:border-box;min-width:118px;line-height:1.45;position:fixed;ri
 </style></head><body>
 <header><b>Speculative mapping exercise</b><button id="vb" style="display:none">Versions</button><button id="arr" title="Cluster connected points together around the circle">Arrange</button><button id="fit">Fit</button><button id="th">◐</button></header>
 <div id="note">Local-only mode: add your Supabase details in index.html to share edits. Changes stay on this device.</div>
-<div id="stage"><div id="panel"></div><div id="grip" title="Drag to resize"></div><div id="mapwrap"><svg id="map" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="clip"><circle r="32"/></clipPath></defs><g id="w"></g></svg><button id="add">+ Add point</button><div id="vpop"></div><div id="vbar"></div></div></div>
+<div id="stage"><div id="panel"></div><div id="grip" title="Drag to resize"></div><div id="mapwrap"><svg id="map" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="clip"><circle r="32"/></clipPath></defs><g id="w"></g></svg><button id="add">+ Add point</button><button id="conn" style="display:none">Connect</button><div id="vpop"></div><div id="vbar"></div></div></div>
 <details><summary>Legend</summary><div id="leg"></div></details>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
@@ -149,7 +149,7 @@ function bar(){const b=$('#vbar');$('#arr').style.display=ro?'none':'';if(!ro){b
   b.append(h('span',{},'Viewing: '+(v.name||'Untitled')+' · '+fmt(v.ts)),nb('← Older',i<vers.length-1,()=>openV(vers[i+1].id)),nb('Newer →',i>0,()=>openV(vers[i-1].id)),
     h('button',{onclick:e=>{const u=location.href.split('#')[0]+'#v='+ro,t=e.target;try{navigator.clipboard.writeText(u)}catch(x){}t.textContent='Copied';setTimeout(()=>{t.textContent='Copy link'},1500)}},'Copy link'),h('button',{onclick:goLive},'Back to live map'))}
 $('#vb').onclick=()=>{const e=$('#vpop');e.style.display=e.style.display==='block'?'none':'block';if(e.style.display==='block')renderV()};
-$('#arr').onclick=arrange;
+$('#arr').onclick=arrange;$('#conn').onclick=()=>{connMode=!connMode;connFrom=null;if(connMode){sel=null;panel()}draw();connUI()};addEventListener('keydown',e=>{if(e.key==='Escape'&&connMode){connMode=false;connFrom=null;draw();connUI()}});
 let drawId=null,cur=null;function kidsOf(id,seen=new Set([id])){const o=[];for(const q of Object.values(pts))if(q.to===id&&!seen.has(q.id)){seen.add(q.id);o.push(q,...kidsOf(q.id,seen))}return o}
 function wp(e){const r=svg.getBoundingClientRect(),p=pts[drawId];return[(e.clientX-r.left-view.x)/view.k-p.x,(e.clientY-r.top-view.y)/view.k-p.y]}
 function pe(d,p){return S('path',{d,transform:`translate(${p.cx!=null?p.cx:p.x} ${p.cy!=null?p.cy:p.y}) scale(${(p.sc||2.5)/Math.sqrt(view.k)})`,'pointer-events':'none',fill:'none',stroke:'var(--fg)','stroke-width':1.6,'stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'})}
@@ -205,7 +205,14 @@ function up(e){P.delete(e.pointerId);if(pinch){if(P.size<2)pinch=null;drag=null;
   if(cur){finishStroke();return}if(!drag)return;const d=drag;drag=null;dragging=false;
   if(d.moved){if(d.dw){put('points',pts,pts[d.dw]);d.kids.forEach(k=>{if(pts[k.id])put('points',pts,pts[k.id])})}else if(d.id)put('points',pts,pts[d.id])}else click(d.id||d.dw)}
 svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
+let connMode=false;
+function applyConnect(p,t){const m=t.cx!=null?[t.cx,t.cy]:[(t.x+p.x)/4,(t.y+p.y)/4];if(t.cx==null){t.cx=m[0];t.cy=m[1];put('points',pts,t)}const a=Math.atan2(p.y-m[1],p.x-m[0]),d=50;p.cx=m[0]+Math.cos(a)*d;p.cy=m[1]+Math.sin(a)*d;p.to=t.id;put('points',pts,p)}
+function connUI(){const b=$('#conn');if(!b)return;const ok=!ro&&!document.body.classList.contains('is3d')&&Object.keys(pts).length>1;b.style.display=ok?'':'none';if(!ok&&connMode){connMode=false;connFrom=null}
+  b.textContent=!connMode?'Connect':connFrom?'Tap the point to connect it to':'Tap a point to start';b.classList.toggle('on',connMode);svg.style.cursor=connMode?'crosshair':''}
 function click(id){
+  if(connMode){if(!id)return;if(!connFrom){connFrom=id;sel=null;draw();panel();connUI();return}
+    if(id===connFrom){connFrom=null;draw();connUI();return}
+    const a=pts[connFrom],t=pts[id];connFrom=null;connMode=false;if(a&&t)applyConnect(a,t);sel=null;draw();panel();connUI();return}
   if(connFrom&&id&&id!==connFrom){put('links',lns,{id:uid(),a:connFrom,b:id});connFrom=null;sel=id;draw();panel();return}
   connFrom=null;sel=id||null;draw();panel()}
 // add
@@ -228,10 +235,7 @@ function panel(){
     else el.append(h('div',{class:'hint',style:'margin-top:8px'},'Uploading files needs editor access.'));
     if(p.asset&&p.type==='image')el.append(h('div',{style:'margin-top:8px'},h('img',{src:blobUrl(p.asset)})));
     if(p.asset&&p.type==='model'){const v=h('div',{id:'v3'});el.append(v);setTimeout(()=>view3d(v,blobUrl(p.asset),p.assetName||''),0)}}
-  el.append(h('label',{},'Path'),h('div',{class:'hint'},'Draw its sphere of influence around the dot, which is its circle on the map. Use as many strokes as you like.'),pad(p),h('div',{class:'row',style:'margin-top:6px'},h('button',{onclick:()=>{(p.paths||[]).pop();save();panel()}},'Undo'),h('button',{onclick:()=>{p.paths=[];save();panel()}},'Clear')),h('label',{},'Connect'),h('div',{class:'hint'},'Their drawings move together and overlap. Drag a drawing on the map to adjust it.'),h('select',{onchange:e=>{const v=e.target.value;if(v==='__self'){delete p.cx;delete p.cy;delete p.to;save();panel();return}const t=pts[v];if(!t)return;const m=t.cx!=null?[t.cx,t.cy]:[(t.x+p.x)/4,(t.y+p.y)/4];if(t.cx==null){t.cx=m[0];t.cy=m[1];put('points',pts,t)}const a=Math.atan2(p.y-m[1],p.x-m[0]),d=50;p.cx=m[0]+Math.cos(a)*d;p.cy=m[1]+Math.sin(a)*d;p.to=t.id;save();panel()}},h('option',{value:''},'Choose…'),p.cx!=null?h('option',{value:'__self'},'Release (back to its own point)'):'',Object.values(pts).filter(o=>o.id!==p.id).map(o=>h('option',{value:o.id},(o.title||'Untitled')+' · '+(o.cat==='other'&&o.catOther?o.catOther:(CATS[o.cat]||''))))));
-  {const cl=[...el.children].find(c=>c.tagName==='LABEL'&&c.textContent==='Connect');if(cl){const hint=cl.nextSibling,csel=hint.nextSibling;
-    const cat=h('div',{},h('label',{},'Category'),h('select',{onchange:e=>{p.cat=e.target.value;save();panel()}},catOpt(p.cat)),p.cat==='other'?h('input',{placeholder:'Fill in the blank…',value:p.catOther||'',style:'margin-top:6px',onchange:e=>{p.catOther=e.target.value;save()}}):'');
-    const con=h('div',{},cl,csel),grid=h('div',{class:'two'},cat,con);el.insertBefore(grid,hint);grid.after(hint);hint.style.marginTop='6px'}}
+  el.append(h('label',{},'Path'),h('div',{class:'hint'},'Draw its sphere of influence around the dot, which is its circle on the map. Use as many strokes as you like.'),pad(p),h('div',{class:'row',style:'margin-top:6px'},h('button',{onclick:()=>{(p.paths||[]).pop();save();panel()}},'Undo'),h('button',{onclick:()=>{p.paths=[];save();panel()}},'Clear')),h('label',{},'Category'),h('select',{onchange:e=>{p.cat=e.target.value;save();panel()}},catOpt(p.cat)),p.cat==='other'?h('input',{placeholder:'Fill in the blank…',value:p.catOther||'',style:'margin-top:6px',onchange:e=>{p.catOther=e.target.value;save()}}):'',p.cx!=null?h('div',{class:'row',style:'margin-top:14px;align-items:center'},h('span',{class:'hint',style:'margin:0;flex:1'},'Connected'+(p.to&&pts[p.to]?' to '+(pts[p.to].title||'Untitled'):'')),h('button',{onclick:()=>{delete p.cx;delete p.cy;delete p.to;save();panel()}},'Release')):'');
   {const ts=el.querySelector('select'),fi=el.querySelector('input[type=file]');if(ts&&fi){const row=h('div',{class:'trow'});ts.before(row);if(p.type==='model')row.after(h('div',{class:'hint',style:'margin-top:6px'},'Accepts .ply, .glb or .gltf files.'));fi.style.display='none';const ub=h('button',{class:'up',type:'button',title:p.assetName||'',onclick:()=>fi.click()},p.asset?(p.assetName||'Replace file'):(p.type==='image'?'Upload image':'Upload 3D file'));row.append(ts,ub,fi)}}
   const mine=Object.values(lns).filter(l=>l.a===sel||l.b===sel);
   if(false){el.append(h('label',{},'connections'));mine.forEach(l=>{const o=pts[l.a===sel?l.b:l.a];el.append(h('div',{class:'row',style:'margin:3px 0;align-items:center'},h('span',{style:'flex:1'},'→ '+(o?o.title:'?')),h('button',{onclick:()=>{del('links',lns,l.id);panel()}},'×')))})}
@@ -360,4 +364,6 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
   const _d=draw;draw=function(){_d.apply(this,arguments);upd();rebuild()};
   const th=$('#th'),_t=th.onclick;th.onclick=function(){_t.apply(this,arguments);setTimeout(rebuild,50)};
 })();
+
+{const _d2=draw;draw=function(){_d2.apply(this,arguments);connUI()};connUI()}
 </script></body></html>
