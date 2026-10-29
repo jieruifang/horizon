@@ -112,8 +112,13 @@ function arrange(){
   const order=[],cid=[];comps.forEach((c,i)=>c.forEach(id=>{order.push(id);cid.push(i)}));
   const n=order.length,w=[];
   for(let i=0;i<n;i++){const j=(i+1)%n,a=order[i],b=order[j];w.push(adj[a].has(b)?.5:cid[i]===cid[j]?.8:1.5)}
-  const tot=w.reduce((x,y)=>x+y,0),p0=pts[order[0]],a0=Math.atan2(p0.y,p0.x);let cum=0;
-  order.forEach((id,i)=>{const a=a0+cum/tot*Math.PI*2,p=pts[id];p.x=Math.cos(a)*R;p.y=Math.sin(a)*R;cum+=w[i];put('points',pts,p)})}
+  // gaps along the circle: connected points sit closest, but never closer than a marker's width
+  const MIN=.26,TAU=Math.PI*2;let gaps=w.map(x=>x);
+  if(n*MIN>=TAU)gaps=w.map(()=>TAU/n);
+  else{const fixed=new Array(n).fill(false);for(let it=0;it<n;it++){let free=0,fs=0;gaps.forEach((g,i)=>{if(!fixed[i]){free+=g;fs++}});const room=TAU-fixed.reduce((t,f)=>t+(f?MIN:0),0);if(!fs)break;const k=room/free;let ch=false;gaps.forEach((g,i)=>{if(fixed[i])return;const v=g*k;if(v<MIN){fixed[i]=true;ch=true}});if(!ch){gaps=gaps.map((g,i)=>fixed[i]?MIN:g*k);break}}
+    const sum=gaps.reduce((x,y)=>x+y,0);gaps=gaps.map(g=>g*TAU/sum)}
+  const p0=pts[order[0]],a0=Math.atan2(p0.y,p0.x);let cum=0;
+  order.forEach((id,i)=>{const a=a0+cum,p=pts[id];p.x=Math.cos(a)*R;p.y=Math.sin(a)*R;cum+=gaps[i];put('points',pts,p)})}
 // versions
 const fmt=t=>new Date(t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 function subVers(){db.collection('versions').onSnapshot(s=>{vers=s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>b.ts-a.ts);renderV();bar();
