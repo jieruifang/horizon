@@ -332,7 +332,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       // drawing sits on its point; a connected drawing slides halfway toward its partner so the two meet
       const s=1/40*2.5*.5,gk=grpOf[find(p.id)].length>1?find(p.id):((p.paths||[]).length?'s'+p.id:null),tgt=gk?(dgs[gk]=dgs[gk]||{g:new THREE.Group(),ids:[],q:place[p.id].q}):null;if(tgt){tgt.ids.push(p.id);if(!tgt.added){tgt.added=1;sc.add(tgt.g)}}
       (p.paths||[]).forEach(d=>{const pts2=sample(d).map(([x,y])=>new THREE.Vector3(x*s,0,y*s));if(pts2.length>1)(tgt?tgt.g:inner).add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2),new THREE.LineBasicMaterial({color:fg})))});
-      disc.userData.gk=gk;const lab=p.title?label(p.title.slice(0,26),fg):null;grp.add(inner);if(lab)grp.add(lab);sc.add(grp);
+      disc.userData.gk=gk;disc.userData.id=p.id;const lab=p.title?label(p.title.slice(0,26),fg):null;grp.add(inner);if(lab)grp.add(lab);sc.add(grp);
       const flat=new THREE.Vector3(Math.cos(a0)*R3,0,Math.sin(a0)*R3);
       nodes.push({id:p.id,grp,inner,flat,sph:I.P,out:I.out,lab});
       if(tgt){const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineDashedMaterial({color:fg,dashSize:.15,gapSize:.25,transparent:true,opacity:.6}));l.frustumCulled=false;sc.add(l);links.push({a:p.id,gk,l})}});
@@ -342,6 +342,11 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
   function loop(){if(!on)return;raf=requestAnimationFrame(loop);mix+=((sphere?1:0)-mix)*.07;
     rings.forEach(l=>l.material.opacity=.3*mix);
     const sinE=cam.position.y/(cam.position.length()||1),tilt=.5*Math.max(0,Math.min(1,(sinE-.4)/.5));nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);{const nrm=n.grp.position.clone().normalize().lerp(cam.position.clone().sub(n.grp.position).normalize(),tilt).normalize();n.inner.quaternion.identity().slerp(upQ(nrm),mix)}});const ix={};nodes.forEach(n=>ix[n.id]=n);const cen={};Object.entries(nodes.dgs||{}).forEach(([k,d])=>{const c=new THREE.Vector3();d.ids.forEach(id=>c.add(ix[id].grp.position));c.multiplyScalar(1/d.ids.length);const dir=c.clone();if(dir.length()<.01)dir.set(0,1,0);dir.normalize();d.g.position.lerpVectors(c,dir.clone().multiplyScalar(R3-4.8),mix);cen[k]=d.g.position;d.g.quaternion.identity().slerp(d.q,mix)});(nodes.links||[]).forEach(k=>{const A=ix[k.a],C=cen[k.gk];if(!A||!C)return;const ps=k.l.geometry.attributes.position;ps.setXYZ(0,A.grp.position.x,A.grp.position.y,A.grp.position.z);ps.setXYZ(1,C.x,C.y,C.z);ps.needsUpdate=true;k.l.computeLineDistances();k.l.visible=true;k.l.material.opacity=.6});oc.update();rend.render(sc,cam)}
+  const ray=new THREE.Raycaster(),mv=new THREE.Vector2();let dn=null;
+  cv.addEventListener('pointerdown',e=>{dn=[e.clientX,e.clientY]});
+  cv.addEventListener('pointerup',e=>{if(!on||!cam||!dn)return;const m=Math.hypot(e.clientX-dn[0],e.clientY-dn[1]);dn=null;if(m>6)return;
+    const b=cv.getBoundingClientRect();mv.set((e.clientX-b.left)/b.width*2-1,-((e.clientY-b.top)/b.height)*2+1);ray.setFromCamera(mv,cam);
+    const hit=ray.intersectObjects(discs,false)[0];if(hit&&hit.object.userData.id&&pts[hit.object.userData.id]){sel=hit.object.userData.id;panel()}});
   const rebuild=()=>{if(!on)return;clearTimeout(timer);timer=setTimeout(build,250)};
   const tg=h('button',{id:'v3t',title:'Switch between the flat circle (editable) and the sphere of rings'},'View as sphere');tg.style.display='none';document.body.append(tg);const dt=document.querySelector('details'),place=()=>{tg.style.bottom=`calc(env(safe-area-inset-bottom,0px) + ${(dt?dt.offsetHeight:0)+18}px)`},upd=()=>{tg.style.display=(Object.keys(pts).length>12||on)?'':'none';place()};if(dt){dt.addEventListener('toggle',place);try{new ResizeObserver(place).observe(dt)}catch(e){}}
   const rb=h('button',{id:'v3rot',title:'Turn auto-rotate on or off'},'Auto-rotate');rb.style.cssText='display:none;position:absolute;left:12px;top:12px;z-index:5';rb.classList.add('on');wrap.append(rb);
