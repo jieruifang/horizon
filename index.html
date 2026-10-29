@@ -108,7 +108,7 @@ function center(){const r=$('#map').getBoundingClientRect();return[(r.width/2-vi
 function arrange(){
   if(ro)return;const all=Object.values(pts);if(all.length<3)return;
   const adj={};all.forEach(p=>adj[p.id]=new Set());
-  all.forEach(p=>{if(p.to&&pts[p.to]&&p.to!==p.id){adj[p.id].add(p.to);adj[p.to].add(p.id)}});
+  all.forEach(p=>{[p.to,...(p.links||[])].forEach(t=>{if(t&&pts[t]&&t!==p.id){adj[p.id].add(t);adj[t].add(p.id)}})});
   const deg=id=>adj[id].size,seen=new Set(),comps=[];
   all.slice().sort((a,b)=>deg(b.id)-deg(a.id)).forEach(p=>{if(seen.has(p.id))return;const walk=id=>{seen.add(id);const o=[id];[...adj[id]].sort((x,y)=>deg(y)-deg(x)).forEach(n=>{if(!seen.has(n))o.push(...walk(n))});return o};seen.add(p.id);const subs=[...adj[p.id]].sort((x,y)=>deg(y)-deg(x)).filter(n=>!seen.has(n)).map(n=>walk(n));const L=[],Rt=[];subs.forEach((t,i)=>{if(i%2)L.push(t.slice().reverse());else Rt.push(t)});comps.push([...L.flat(),p.id,...Rt.flat()])});
   comps.sort((a,b)=>b.length-a.length);
@@ -191,6 +191,7 @@ function draw(){
     const t=S('text',{y:r0+22,'text-anchor':'middle','font-size':13,fill:'var(--fg)'});t.textContent=(p.title||'').slice(0,26);g.append(t);if(p.type==='text'&&p.text){const w=p.text.replace(/\s+/g,' ').trim().match(/.{1,24}(\s|$)/g)||[];w.slice(0,3).forEach((s,i)=>{const u=S('text',{y:r0+38+i*14,'text-anchor':'middle','font-size':12,'font-family':'Newsreader,Georgia,serif','font-style':'italic',fill:'var(--dim)'});u.textContent=s.trim()+(i===2&&w.length>3?'…':'');g.append(u)})}mk.push(g)}for(const id in pts){const p=pts[id];{const t=p.to&&pts[p.to];if(t){const direct=!(p.paths||[]).length&&!(t.paths||[]).length,ex=direct?t.x:p.cx,ey=direct?t.y:p.cy;
       if(ex!=null){const mx=(p.x+ex)/2*.8,my=(p.y+ey)/2*.8,hot=id===sel||p.to===sel||(sel&&pts[sel]&&pts[sel].to===id);W.append(S('path',{d:`M${p.x} ${p.y}Q${mx} ${my} ${ex} ${ey}`,fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'}))}}}(p.paths||[]).forEach(d=>{W.append(pe(d,p));const h2=pe(d,p);h2.setAttribute('stroke','transparent');h2.setAttribute('stroke-width',18);h2.setAttribute('pointer-events','stroke');h2.setAttribute('data-draw',id);h2.style.cursor='move';W.append(h2)})}
   if(cd&&pts[cd.from]&&cd.pt){const f=pts[cd.from],to=cd.over&&pts[cd.over]?[pts[cd.over].x,pts[cd.over].y]:cd.pt;W.append(S('line',{x1:f.x,y1:f.y,x2:to[0],y2:to[1],stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round','vector-effect':'non-scaling-stroke','pointer-events':'none'}))}
+  Object.values(pts).forEach(p=>(p.links||[]).forEach(t=>{const q=pts[t];if(!q)return;const hot=p.id===sel||t===sel;W.append(S('path',{d:`M${p.x} ${p.y}Q${(p.x+q.x)/2*.8} ${(p.y+q.y)/2*.8} ${q.x} ${q.y}`,fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'}))}));
   mk.forEach(g=>W.append(g));
   apply();
 }
@@ -212,9 +213,11 @@ function up(e){P.delete(e.pointerId);if(cd){const c=cd;cd=null;svg.style.cursor=
   if(d.moved){if(d.dw){put('points',pts,pts[d.dw]);d.kids.forEach(k=>{if(pts[k.id])put('points',pts,pts[k.id])})}else if(d.id)put('points',pts,pts[d.id])}else click(d.id||d.dw)}
 svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
 let connMode=false;
-function applyConnect(p,t){if(!(p.paths||[]).length&&!(t.paths||[]).length){delete p.cx;delete p.cy;p.to=t.id;put('points',pts,p);return}const m=t.cx!=null?[t.cx,t.cy]:[(t.x+p.x)/4,(t.y+p.y)/4];if(t.cx==null){t.cx=m[0];t.cy=m[1];put('points',pts,t)}const a=Math.atan2(p.y-m[1],p.x-m[0]),d=50;p.cx=m[0]+Math.cos(a)*d;p.cy=m[1]+Math.sin(a)*d;p.to=t.id;put('points',pts,p)}
+function applyConnect(p,t){if(p.id===t.id||p.to===t.id||t.to===p.id||(p.links||[]).includes(t.id)||(t.links||[]).includes(p.id))return;if(p.to&&pts[p.to]){(p.links=p.links||[]).push(t.id);put('points',pts,p);return}if(!(p.paths||[]).length&&!(t.paths||[]).length){delete p.cx;delete p.cy;p.to=t.id;put('points',pts,p);return}const m=t.cx!=null?[t.cx,t.cy]:[(t.x+p.x)/4,(t.y+p.y)/4];if(t.cx==null){t.cx=m[0];t.cy=m[1];put('points',pts,t)}const a=Math.atan2(p.y-m[1],p.x-m[0]),d=50;p.cx=m[0]+Math.cos(a)*d;p.cy=m[1]+Math.sin(a)*d;p.to=t.id;put('points',pts,p)}
 function connList(p){
   const rows=[];if(p.to&&pts[p.to])rows.push({o:pts[p.to],rel:()=>{delete p.cx;delete p.cy;delete p.to;put('points',pts,p);panel()}});
+  (p.links||[]).forEach(t=>{if(pts[t])rows.push({o:pts[t],rel:()=>{p.links=p.links.filter(x=>x!==t);put('points',pts,p);panel()}})});
+  Object.values(pts).filter(q=>(q.links||[]).includes(p.id)).forEach(q=>rows.push({o:q,rel:()=>{q.links=q.links.filter(x=>x!==p.id);put('points',pts,q);panel()}}));
   Object.values(pts).filter(q=>q.to===p.id).forEach(q=>rows.push({o:q,rel:()=>{delete q.cx;delete q.cy;delete q.to;put('points',pts,q);panel()}}));
   if(!rows.length)return '';
   return h('div',{},h('label',{},'Connections'),...rows.map(r=>h('div',{class:'row',style:'margin-top:6px;align-items:center;flex-wrap:nowrap;gap:6px'},
@@ -318,7 +321,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
     const list=Object.values(pts),byId={};list.forEach(p=>byId[p.id]=p);
     // connected points form a group that shares one ring and sits side by side
     const uf={};const find=x=>uf[x]===x?x:(uf[x]=find(uf[x]));list.forEach(p=>uf[p.id]=p.id);
-    list.forEach(p=>{if(p.to&&byId[p.to])uf[find(p.id)]=find(p.to)});
+    list.forEach(p=>{[p.to,...(p.links||[])].forEach(t=>{if(t&&byId[t])uf[find(p.id)]=find(t)})});
     const grpOf={};list.forEach(p=>{(grpOf[find(p.id)]=grpOf[find(p.id)]||[]).push(p)});
     const comps=Object.values(grpOf).filter(g=>g.length>1);
     const CAP=12,RQs=k=>k===0?new THREE.Quaternion():new THREE.Quaternion().setFromEuler(new THREE.Euler((k%2?1:-1)*1.05,(k-1)*.8,0));
@@ -354,6 +357,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       const flat=new THREE.Vector3(Math.cos(a0)*R3,0,Math.sin(a0)*R3);
       nodes.push({id:p.id,grp,inner,flat,sph:I.P,out:I.out,lab});
       if(tgt){const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:25},()=>new THREE.Vector3())),new THREE.LineDashedMaterial({color:fg,dashSize:.18,gapSize:.22,transparent:true,opacity:.9}));l.frustumCulled=false;sc.add(l);links.push({a:p.id,gk,l})}
+      (p.links||[]).forEach(t=>{if(!info[t])return;const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:25},()=>new THREE.Vector3())),new THREE.LineDashedMaterial({color:fg,dashSize:.18,gapSize:.22,transparent:true,opacity:.9}));l.frustumCulled=false;sc.add(l);links.push({a:p.id,b:t,l})});
       if(!tgt&&p.to&&info[p.to]&&!gHas){const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:25},()=>new THREE.Vector3())),new THREE.LineDashedMaterial({color:fg,dashSize:.18,gapSize:.22,transparent:true,opacity:.9}));l.frustumCulled=false;sc.add(l);links.push({a:p.id,b:p.to,l})}});
     nodes.links=links;nodes.dgs=dgs;
     size()}
