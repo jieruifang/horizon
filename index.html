@@ -315,15 +315,15 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       const grp=new THREE.Group(),inner=new THREE.Group(),a0=Math.atan2(p.y,p.x),I=info[p.id];
       const isT=p.type==='text',rad=isT?.4:1;
       const mat=new THREE.MeshBasicMaterial({color:new THREE.Color(bg),side:THREE.DoubleSide});
-      const disc=new THREE.Mesh(new THREE.CircleGeometry(rad,48),mat);disc.rotation.x=-Math.PI/2;disc.position.y=.01;
-      const rim=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:65},(_,i)=>new THREE.Vector3(Math.cos(i/64*6.2832)*rad,0,Math.sin(i/64*6.2832)*rad))),new THREE.LineBasicMaterial({color:fg}));rim.position.y=.02;
-      const dot=new THREE.Mesh(new THREE.CircleGeometry(.1,16),new THREE.MeshBasicMaterial({color:fg,side:THREE.DoubleSide}));dot.rotation.x=-Math.PI/2;dot.position.y=.03;
+      const disc=new THREE.Mesh(new THREE.CircleGeometry(rad,48),mat);disc.rotation.x=-Math.PI/2;disc.position.y=.06;
+      const rim=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:65},(_,i)=>new THREE.Vector3(Math.cos(i/64*6.2832)*rad,0,Math.sin(i/64*6.2832)*rad))),new THREE.LineBasicMaterial({color:fg}));rim.position.y=.07;
+      const dot=new THREE.Mesh(new THREE.CircleGeometry(.1,16),new THREE.MeshBasicMaterial({color:fg,side:THREE.DoubleSide}));dot.rotation.x=-Math.PI/2;dot.position.y=.08;
       inner.add(disc,rim,dot);discs.push(disc);
       let src=null;if(p.type==='image'&&p.asset)src=blobUrl(p.asset);else if(p.type==='model'&&p.asset&&thumbs[p.asset])src=thumbs[p.asset][0];
       if(src)tex(src,t=>{mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true});
       // drawing sits on its point; a connected drawing slides halfway toward its partner so the two meet
       const s=1/40*2.5,gk=grpOf[find(p.id)].length>1?find(p.id):null,tgt=gk?(dgs[gk]=dgs[gk]||{g:new THREE.Group(),ids:[]}):null;if(tgt){tgt.ids.push(p.id);if(!tgt.added){tgt.added=1;sc.add(tgt.g)}}
-      (p.paths||[]).forEach(d=>{const pts2=sample(d).map(([x,y])=>new THREE.Vector3(x*s,.02,y*s));if(pts2.length>1)(tgt?tgt.g:inner).add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2),new THREE.LineBasicMaterial({color:fg})))});
+      (p.paths||[]).forEach(d=>{const pts2=sample(d).map(([x,y])=>new THREE.Vector3(x*s,0,y*s));if(pts2.length>1)(tgt?tgt.g:inner).add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2),new THREE.LineBasicMaterial({color:fg})))});
       disc.userData.gk=gk;grp.add(inner);if(p.title)grp.add(label(p.title.slice(0,26),fg));sc.add(grp);
       const flat=new THREE.Vector3(Math.cos(a0)*R3,0,Math.sin(a0)*R3);
       nodes.push({id:p.id,grp,inner,flat,sph:I.P,out:I.out});
