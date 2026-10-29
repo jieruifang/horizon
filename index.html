@@ -167,17 +167,21 @@ function sm(a){const f=n=>Math.round(n*10)/10;let d=`M${f(a[0][0])} ${f(a[0][1])
 function finishStroke(){const p=pts[drawId],a=cur;cur=null;if(!p||a.length<2){draw();return}p.paths=(p.paths||[]).concat(sm(a));put('points',pts,p)}
 const R=520;function ring(p){const m=Math.hypot(p.x,p.y);if(m<1){p.x=R;p.y=0}else{p.x*=R/m;p.y*=R/m}}
 function pad(p){
-  const W=240,H=240,s=S('svg',{viewBox:`${-W/2} ${-H/2} ${W} ${H}`,width:'100%',style:'box-sizing:border-box;max-height:200px;border:1px solid var(--line);touch-action:none;display:block;background:var(--bg);cursor:crosshair'});
+  const W=240,H=240,s=S('svg',{viewBox:`${-W/2} ${-H/2} ${W} ${H}`,width:'100%',style:'box-sizing:border-box;max-height:200px;border:1px solid var(--line);touch-action:pan-y;display:block;background:var(--bg);cursor:crosshair'});
   
   const gr=S('g',{fill:'none',stroke:'var(--fg)','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});s.append(S('circle',{r:100,fill:'none',stroke:'var(--line)','stroke-dasharray':'2 4','pointer-events':'none'}));s.append(gr);s.append(S('circle',{r:40,fill:'var(--fg)','fill-opacity':.85,stroke:'none','pointer-events':'none'}));
   const show=()=>{gr.textContent='';(p.paths||[]).forEach(d=>gr.append(S('path',{d})))};show();
   let a=null,live=null;
   const pt=e=>{const r=s.getBoundingClientRect();let x=(e.clientX-r.left)/r.width*W-W/2,y=(e.clientY-r.top)/r.height*H-H/2;const m=Math.hypot(x,y);if(m>100){x*=100/m;y*=100/m}return[x,y]};
-  s.addEventListener('pointerdown',e=>{s.setPointerCapture(e.pointerId);a=[pt(e)];live=S('path',{});gr.append(live);e.preventDefault()});
+  // on touch screens the box scrolls with the page until it is tapped, so a swipe doesn't draw
+  const touch=matchMedia('(hover:none)').matches;let on=!touch,tap=null;
+  const tip=h('div',{class:'hint',style:'margin:6px 0 0'}),done=h('button',{style:'margin-top:6px',onclick:()=>set(false)},'Done drawing');
+  const set=v=>{on=v;s.style.touchAction=v?'none':'pan-y';s.style.borderColor=v?'var(--fg)':'';tip.textContent=v?'Draw inside the dotted circle.':'Tap the box to start drawing.';tip.style.display=touch?'':'none';done.style.display=touch&&v?'':'none'};set(on);
+  s.addEventListener('pointerdown',e=>{if(!on){tap={x:e.clientX,y:e.clientY};return}s.setPointerCapture(e.pointerId);a=[pt(e)];live=S('path',{});gr.append(live);e.preventDefault()});
   s.addEventListener('pointermove',e=>{if(!a)return;const q=pt(e),l=a[a.length-1];if(Math.hypot(q[0]-l[0],q[1]-l[1])>3){a.push(q);live.setAttribute('d',sm(a))}});
   const end=()=>{if(!a)return;const b=a;a=null;if(b.length<2){show();return}p.paths=(p.paths||[]).concat(sm(b));put('points',pts,p);show()};
-  s.addEventListener('pointerup',end);s.addEventListener('pointercancel',end);
-  return s}
+  s.addEventListener('pointerup',e=>{if(tap&&!on&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<8)set(true);tap=null;end()});s.addEventListener('pointercancel',()=>{tap=null;end()});
+  return h('div',{},s,tip,done)}
 let fitted=0;function fit(){const r0=svg.getBoundingClientRect();view.k=Math.max(.2,Math.min(r0.width,r0.height)/(2*R+160));view.x=r0.width/2;view.y=r0.height/2;draw();return;const a=Object.values(pts);if(!a.length)return;const r=svg.getBoundingClientRect(),xs=a.map(p=>p.x),ys=a.map(p=>p.y),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),k=Math.max(.3,Math.min(1.5,Math.min(r.width/(x1-x0+300),r.height/(y1-y0+300))));view.k=k;view.x=r.width/2-(x0+x1)/2*k;view.y=r.height/2-(y0+y1)/2*k;draw()}
 $('#fit').onclick=fit;
 $('#map').addEventListener('wheel',e=>{e.preventDefault();zoom(view.k*(e.deltaY<0?1.1:.9),e.clientX,e.clientY)},{passive:false});
