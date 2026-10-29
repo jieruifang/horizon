@@ -22,12 +22,12 @@ button{cursor:pointer}button:hover{background:var(--fg);color:var(--bg)}
 #panel textarea{min-height:90px;resize:vertical;font-family:"Newsreader",Georgia,serif;font-size:15px;line-height:1.4}
 #panel img{width:100%;filter:grayscale(1)}
 .row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
-#v3{aspect-ratio:270/220;width:100%;margin-top:8px;border:1px solid var(--line);box-sizing:border-box;overflow:hidden}#v3 canvas{display:block;width:100%!important;height:100%!important}
+#v3{aspect-ratio:270/220;width:100%;margin-top:8px;border:1px solid var(--line);box-sizing:border-box;overflow:hidden}#v3 .zb{position:absolute;bottom:6px;width:24px;height:24px;padding:0;line-height:1;background:var(--bg);opacity:.85}#v3 canvas{touch-action:pan-y;display:block;width:100%!important;height:100%!important}
 #vpop{display:none;position:absolute;top:12px;right:12px;width:300px;max-width:92%;max-height:70%;overflow:auto;background:var(--panel);border:1px solid var(--line);padding:14px;z-index:5;box-sizing:border-box}#vpop label{display:block;color:var(--fg);font-weight:600;font-size:14px;margin:14px 0 6px}#vpop label:first-child{margin-top:0}#vpop input{width:100%;box-sizing:border-box}.vrow{display:flex;gap:6px;align-items:center;margin:8px 0}.vmsg{color:var(--dim);font-size:11px;margin-top:6px;min-height:14px}.del{color:#e5484d;border-color:#e5484d}.del:hover{background:#e5484d;color:#fff}#vbar{display:none;position:absolute;top:12px;left:50%;transform:translateX(-50%);gap:6px;align-items:center;background:var(--bg);border:1px solid var(--dim);padding:6px 10px;z-index:4;flex-wrap:wrap;justify-content:center;max-width:90%;box-sizing:border-box}
 details{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);color:var(--dim);font-size:11px;background:var(--bg);padding:4px 8px;border:1px solid var(--line)}
 @media(max-width:640px){#grip{display:none!important}#panel>*{min-width:0}#stage{flex-direction:column-reverse}#panel{width:100%;max-height:0;padding:0 20px;border-right:0;border-top:1px solid transparent;transition:max-height .35s ease,padding .35s ease,opacity .3s ease}#panel.open{width:100%;max-height:55%;padding:18px 20px;border-top-color:var(--line)}#panel>*{min-width:0}details{display:none}}
 </style></head><body>
-<header><b>SPECULATIVE MAPPING EXERCISE</b><button id="vb" style="display:none">Versions</button><button id="arr" title="Cluster connected points together around the circle">Arrange</button><button id="fit">Fit</button><button id="zo">–</button><button id="zi">+</button><button id="th">◐</button></header>
+<header><b>SPECULATIVE MAPPING EXERCISE</b><button id="vb" style="display:none">Versions</button><button id="arr" title="Cluster connected points together around the circle">Arrange</button><button id="fit">Fit</button><button id="th">◐</button></header>
 <div id="note">Local-only mode: add your Supabase details in index.html to share edits. Changes stay on this device.</div>
 <div id="stage"><div id="panel"></div><div id="grip" title="Drag to resize"></div><div id="mapwrap"><svg id="map" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="clip"><circle r="32"/></clipPath></defs><g id="w"></g></svg><button id="add">+ Add point</button><div id="vpop"></div><div id="vbar"></div></div></div>
 <details><summary>Legend</summary><div id="leg"></div></details>
@@ -101,8 +101,6 @@ function sub(name,store){db.collection(name).onSnapshot(s=>{if(dragging)return;f
 function apply(){$('#w').setAttribute('transform',`translate(${view.x} ${view.y}) scale(${view.k})`)}
 function zoom(k,cx,cy){k=Math.max(.2,Math.min(4,k));const r=$('#map').getBoundingClientRect(),wx=(cx-r.left-view.x)/view.k,wy=(cy-r.top-view.y)/view.k;view.k=k;view.x=cx-r.left-wx*k;view.y=cy-r.top-wy*k;apply()}
 function center(){const r=$('#map').getBoundingClientRect();return[(r.width/2-view.x)/view.k,(r.height/2-view.y)/view.k]}
-$('#zi').onclick=()=>{const r=$('#map').getBoundingClientRect();zoom(view.k*1.25,r.left+r.width/2,r.top+r.height/2)};
-$('#zo').onclick=()=>{const r=$('#map').getBoundingClientRect();zoom(view.k/1.25,r.left+r.width/2,r.top+r.height/2)};
 function arrange(){
   if(ro)return;const all=Object.values(pts);if(all.length<3)return;
   const adj={};all.forEach(p=>adj[p.id]=new Set());
@@ -249,7 +247,10 @@ function view3d(el,url,name){
   const w=el.clientWidth||270,hh=w*220/270,r=new THREE.WebGLRenderer({antialias:true});r.setSize(w,hh);r.setPixelRatio(devicePixelRatio);r.setClearColor(0x0a0a0a,1);el.append(r.domElement);
   const s=new THREE.Scene(),c=new THREE.PerspectiveCamera(45,w/hh,.01,1000);s.add(new THREE.AmbientLight(0xffffff,.9));const l=new THREE.DirectionalLight(0xffffff,.8);l.position.set(2,3,4);s.add(l);
   const ply=(name||'').toLowerCase().endsWith('.ply');(ply?new THREE.PLYLoader():new THREE.GLTFLoader()).load(url,g=>{const o=ply?plyObj(g,hh,45):g.scene,b=new THREE.Box3().setFromObject(o),sz=b.getSize(new THREE.Vector3()).length()||1;o.position.sub(b.getCenter(new THREE.Vector3()));s.add(o);c.position.set(0,sz*.108,sz*.611);c.near=sz/100;c.far=sz*10;c.updateProjectionMatrix()},undefined,()=>{el.textContent='Could not load this model'});
-  const oc=new THREE.OrbitControls(c,r.domElement);oc.autoRotate=true;
+  const oc=new THREE.OrbitControls(c,r.domElement);oc.autoRotate=true;oc.enableZoom=false;
+  const dz=k=>{const d=c.position.clone().sub(oc.target),l=d.length(),n=Math.max(l*.2,Math.min(l*6,l*k));c.position.copy(oc.target).add(d.multiplyScalar(n/l))};
+  r.domElement.addEventListener('wheel',e=>{if(e.ctrlKey){e.preventDefault();dz(e.deltaY>0?1.06:.94)}},{passive:false});
+  el.style.position='relative';const zb=(t,k,right)=>{const b=document.createElement('button');b.textContent=t;b.className='zb';b.style.right=right+'px';b.onclick=()=>dz(k);el.append(b)};zb('+',.8,6);zb('–',1.25,34);
   const fit3=()=>{const W=el.clientWidth||270;r.setSize(W,W*220/270,false);const sc=r.domElement.height/(2*Math.tan(45*Math.PI/360));s.traverse(x=>{if(x.isPoints&&x.material.uniforms)x.material.uniforms.sc.value=sc})};try{new ResizeObserver(fit3).observe(el)}catch(e){}
   (function loop(){if(!el.isConnected){r.dispose();return}s.traverse(x=>{if(x.isPoints&&x.material.uniforms)x.material.uniforms.fd.value=c.position.length()});oc.update();r.render(s,c);requestAnimationFrame(loop)})();
 }
