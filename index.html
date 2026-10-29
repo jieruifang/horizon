@@ -207,6 +207,13 @@ function up(e){P.delete(e.pointerId);if(pinch){if(P.size<2)pinch=null;drag=null;
 svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
 let connMode=false;
 function applyConnect(p,t){const m=t.cx!=null?[t.cx,t.cy]:[(t.x+p.x)/4,(t.y+p.y)/4];if(t.cx==null){t.cx=m[0];t.cy=m[1];put('points',pts,t)}const a=Math.atan2(p.y-m[1],p.x-m[0]),d=50;p.cx=m[0]+Math.cos(a)*d;p.cy=m[1]+Math.sin(a)*d;p.to=t.id;put('points',pts,p)}
+function connList(p){
+  const rows=[];if(p.to&&pts[p.to])rows.push({o:pts[p.to],rel:()=>{delete p.cx;delete p.cy;delete p.to;put('points',pts,p);panel()}});
+  Object.values(pts).filter(q=>q.to===p.id).forEach(q=>rows.push({o:q,rel:()=>{delete q.cx;delete q.cy;delete q.to;put('points',pts,q);panel()}}));
+  if(!rows.length)return '';
+  return h('div',{},h('label',{},'Connections'),...rows.map(r=>h('div',{class:'row',style:'margin-top:6px;align-items:center;flex-wrap:nowrap'},
+    h('button',{style:'flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap',title:'Open this point',onclick:()=>{sel=r.o.id;draw();panel()}},r.o.title||'Untitled'),
+    h('button',{title:'Remove this connection',onclick:r.rel},'Release'))))}
 function connUI(){const b=$('#conn');if(!b)return;const ok=!ro&&!document.body.classList.contains('is3d')&&Object.keys(pts).length>1;b.style.display=ok?'':'none';if(!ok&&connMode){connMode=false;connFrom=null}
   b.textContent=!connMode?'Connect':connFrom?'Tap the point to connect it to':'Tap a point to start';b.classList.toggle('on',connMode);svg.style.cursor=connMode?'crosshair':''}
 function click(id){
@@ -235,7 +242,7 @@ function panel(){
     else el.append(h('div',{class:'hint',style:'margin-top:8px'},'Uploading files needs editor access.'));
     if(p.asset&&p.type==='image')el.append(h('div',{style:'margin-top:8px'},h('img',{src:blobUrl(p.asset)})));
     if(p.asset&&p.type==='model'){const v=h('div',{id:'v3'});el.append(v);setTimeout(()=>view3d(v,blobUrl(p.asset),p.assetName||''),0)}}
-  el.append(h('label',{},'Path'),h('div',{class:'hint'},'Draw its sphere of influence around the dot, which is its circle on the map. Use as many strokes as you like.'),pad(p),h('div',{class:'row',style:'margin-top:6px'},h('button',{onclick:()=>{(p.paths||[]).pop();save();panel()}},'Undo'),h('button',{onclick:()=>{p.paths=[];save();panel()}},'Clear')),h('label',{},'Category'),h('select',{onchange:e=>{p.cat=e.target.value;save();panel()}},catOpt(p.cat)),p.cat==='other'?h('input',{placeholder:'Fill in the blank…',value:p.catOther||'',style:'margin-top:6px',onchange:e=>{p.catOther=e.target.value;save()}}):'',p.cx!=null?h('div',{class:'row',style:'margin-top:14px;align-items:center'},h('span',{class:'hint',style:'margin:0;flex:1'},'Connected'+(p.to&&pts[p.to]?' to '+(pts[p.to].title||'Untitled'):'')),h('button',{onclick:()=>{delete p.cx;delete p.cy;delete p.to;save();panel()}},'Release')):'');
+  el.append(h('label',{},'Path'),h('div',{class:'hint'},'Draw its sphere of influence around the dot, which is its circle on the map. Use as many strokes as you like.'),pad(p),h('div',{class:'row',style:'margin-top:6px'},h('button',{onclick:()=>{(p.paths||[]).pop();save();panel()}},'Undo'),h('button',{onclick:()=>{p.paths=[];save();panel()}},'Clear')),h('label',{},'Category'),h('select',{onchange:e=>{p.cat=e.target.value;save();panel()}},catOpt(p.cat)),p.cat==='other'?h('input',{placeholder:'Fill in the blank…',value:p.catOther||'',style:'margin-top:6px',onchange:e=>{p.catOther=e.target.value;save()}}):'',connList(p));
   {const ts=el.querySelector('select'),fi=el.querySelector('input[type=file]');if(ts&&fi){const row=h('div',{class:'trow'});ts.before(row);if(p.type==='model')row.after(h('div',{class:'hint',style:'margin-top:6px'},'Accepts .ply, .glb or .gltf files.'));fi.style.display='none';const ub=h('button',{class:'up',type:'button',title:p.assetName||'',onclick:()=>fi.click()},p.asset?(p.assetName||'Replace file'):(p.type==='image'?'Upload image':'Upload 3D file'));row.append(ts,ub,fi)}}
   const mine=Object.values(lns).filter(l=>l.a===sel||l.b===sel);
   if(false){el.append(h('label',{},'connections'));mine.forEach(l=>{const o=pts[l.a===sel?l.b:l.a];el.append(h('div',{class:'row',style:'margin:3px 0;align-items:center'},h('span',{style:'flex:1'},'→ '+(o?o.title:'?')),h('button',{onclick:()=>{del('links',lns,l.id);panel()}},'×')))})}
