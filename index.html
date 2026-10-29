@@ -274,10 +274,8 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
 (()=>{
   if(!window.THREE||!THREE.OrbitControls)return;
   const wrap=$('#mapwrap'),cv=document.createElement('canvas');cv.id='c3';cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:none;touch-action:none';wrap.insertBefore(cv,wrap.firstChild);
-  const bar=h('div',{id:'bar3'}),mk=(id,t,f)=>{const b=h('button',{id,onclick:f},t);bar.append(b);return b};
-  bar.style.cssText='position:absolute;left:12px;bottom:12px;display:none;gap:6px;flex-wrap:wrap;z-index:5';wrap.append(bar);
   const hid=document.createElementNS(NS,'svg');hid.style.cssText='position:absolute;width:0;height:0;visibility:hidden';document.body.append(hid);
-  let on=false,sphere=false,mix=0,nodes=[],R3=10,rend,sc,cam,oc,lines=[],flatRing,rings=[],timer=0,raf=0;
+  let on=false,sphere=true,mix=0,nodes=[],R3=10,rend,sc,cam,oc,lines=[],flatRing,rings=[],timer=0,raf=0;
   const CO=['flora','fauna','eco','trade','inst','story',''];
   const RQ=[[0,0],[1.05,0],[-1.05,0],[.5,1.57],[-.5,1.57],[1.57,.8],[.3,.4]].map(([x,y])=>new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,0)));
   const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim()||'#888';
@@ -316,13 +314,9 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
     flatRing.material.opacity=.3*(1-mix);rings.forEach(l=>l.material.opacity=.3*mix);
     nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);n.inner.quaternion.identity().slerp(n.out,mix)});oc.update();rend.render(sc,cam)}
   const rebuild=()=>{if(!on)return;clearTimeout(timer);timer=setTimeout(build,250)};
-  const views={top:[0,26,.01],tilt:[0,17,19],low:[0,6,27]},setV=n=>{cam.position.set(...views[n]);oc.update()};
-  mk('v3top','Top',()=>setV('top'));
-  const rot=mk('v3rot','Auto-rotate',()=>{oc.autoRotate=!oc.autoRotate;rot.classList.toggle('on',oc.autoRotate)});
-  const sp=mk('v3sph','One ring',()=>{sphere=!sphere;sp.textContent=sphere?'Sphere of rings':'One ring';if(sphere){cam.position.set(0,12,34);oc.update()}});
-  const tg=h('button',{id:'v3t',title:'Switch between the editable flat map and a 3D view'},'3D');$('header').insertBefore(tg,$('#arr'));
-  tg.onclick=()=>{on=!on;tg.textContent=on?'2D':'3D';cv.style.display=bar.style.display=on?'flex':'none';cv.style.display=on?'block':'none';$('#map').style.visibility=on?'hidden':'';$('#add').style.visibility=on?'hidden':'';
-    if(on){sel=null;connFrom=null;drawId=null;cur=null;panel();build();cancelAnimationFrame(raf);loop()}else cancelAnimationFrame(raf)};
+  const tg=h('button',{id:'v3t',title:'Switch between the flat circle (editable) and the sphere of rings'},'Sphere');$('header').insertBefore(tg,$('#arr'));
+  tg.onclick=()=>{on=!on;tg.textContent=on?'Circle':'Sphere';cv.style.display=on?'block':'none';$('#map').style.visibility=on?'hidden':'';$('#add').style.visibility=on?'hidden':'';
+    if(on){sel=null;connFrom=null;drawId=null;cur=null;panel();mix=0;build();if(cam){cam.position.set(0,12,34);oc.update()}cancelAnimationFrame(raf);loop()}else cancelAnimationFrame(raf)};
   try{new ResizeObserver(size).observe(wrap)}catch(e){}
   const _d=draw;draw=function(){_d.apply(this,arguments);rebuild()};
   const th=$('#th'),_t=th.onclick;th.onclick=function(){_t.apply(this,arguments);setTimeout(rebuild,50)};
