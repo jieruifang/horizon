@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Speculative Mapping Exercise</title>
+<title>Speculative mapping exercise</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Newsreader:ital,wght@0,400;1,400&display=swap">
 <style>
@@ -11,7 +11,7 @@
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--fg);font:13px/1.45 "IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;overflow:hidden;display:flex;flex-direction:column}
 header{display:flex;gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--line)}
-header b{flex:1;letter-spacing:.12em;font-size:12px}
+header b{flex:1;font:italic 400 20px/1.1 "Newsreader",Georgia,serif;letter-spacing:0}
 button,select,input,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--dim);padding:5px 8px;border-radius:0}
 button{cursor:pointer}button:hover{background:var(--fg);color:var(--bg)}
 #stage{flex:1;display:flex;min-height:0}#mapwrap{flex:1;position:relative;min-width:0}#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}#add{position:absolute;left:12px;top:12px}
@@ -27,7 +27,7 @@ button{cursor:pointer}button:hover{background:var(--fg);color:var(--bg)}
 details{position:fixed;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);color:var(--dim);font-size:11px;background:var(--bg);padding:4px 8px;border:1px solid var(--line)}
 @media(max-width:640px){#grip{display:none!important}#panel>*{min-width:0}#stage{flex-direction:column-reverse}#panel{width:100%;max-height:0;margin:0!important;padding:0 20px;border-right:0;border-top:1px solid transparent;transition:max-height .35s ease,padding .35s ease,opacity .3s ease}#panel.open{width:100%;max-height:55%;padding:0 20px 18px;border-width:1px 0 0}#panel>*{min-width:0}details{display:none}}
 </style></head><body>
-<header><b>SPECULATIVE MAPPING EXERCISE</b><button id="vb" style="display:none">Versions</button><button id="arr" title="Cluster connected points together around the circle">Arrange</button><button id="fit">Fit</button><button id="th">◐</button></header>
+<header><b>Speculative mapping exercise</b><button id="vb" style="display:none">Versions</button><button id="arr" title="Cluster connected points together around the circle">Arrange</button><button id="fit">Fit</button><button id="th">◐</button></header>
 <div id="note">Local-only mode: add your Supabase details in index.html to share edits. Changes stay on this device.</div>
 <div id="stage"><div id="panel"></div><div id="grip" title="Drag to resize"></div><div id="mapwrap"><svg id="map" xmlns="http://www.w3.org/2000/svg"><defs><clipPath id="clip"><circle r="32"/></clipPath></defs><g id="w"></g></svg><button id="add">+ Add point</button><div id="vpop"></div><div id="vbar"></div></div></div>
 <details><summary>Legend</summary><div id="leg"></div></details>
