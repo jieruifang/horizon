@@ -317,7 +317,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
     nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);n.inner.quaternion.identity().slerp(n.out,mix)});oc.update();rend.render(sc,cam)}
   const rebuild=()=>{if(!on)return;clearTimeout(timer);timer=setTimeout(build,250)};
   const views={top:[0,26,.01],tilt:[0,17,19],low:[0,6,27]},setV=n=>{cam.position.set(...views[n]);oc.update()};
-  mk('v3top','Top',()=>setV('top'));mk('v3tilt','Tilted',()=>setV('tilt'));mk('v3low','Low',()=>setV('low'));
+  mk('v3top','Top',()=>setV('top'));
   const rot=mk('v3rot','Auto-rotate',()=>{oc.autoRotate=!oc.autoRotate;rot.classList.toggle('on',oc.autoRotate)});
   const sp=mk('v3sph','One ring',()=>{sphere=!sphere;sp.textContent=sphere?'Sphere of rings':'One ring';if(sphere){cam.position.set(0,12,34);oc.update()}});
   const tg=h('button',{id:'v3t',title:'Switch between the editable flat map and a 3D view'},'3D');$('header').insertBefore(tg,$('#arr'));
