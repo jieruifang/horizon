@@ -208,7 +208,7 @@ function panel(){
   el.textContent='';el.classList.add('open');$('#add').style.display='none';
   const save=()=>put('points',pts,p),opt=(m,cur)=>Object.entries(m).map(([k,v])=>{const o=h('option',{value:k},v);if(k===cur)o.selected=true;return o});
   el.append(
-    h('div',{class:'ph'},h('span',{},'Point of life'),h('button',{class:'x','aria-label':'close',onclick:()=>{sel=null;connFrom=null;drawId=null;cur=null;svg.style.cursor='';draw();panel()}},'×')),
+    h('div',{class:'ph'},h('span',{},'Point'),h('button',{class:'x','aria-label':'close',onclick:()=>{sel=null;connFrom=null;drawId=null;cur=null;svg.style.cursor='';draw();panel()}},'×')),
     h('label',{},'Name'),h('input',{value:p.title||'',onchange:e=>{p.title=e.target.value;save()}}),
     h('label',{},'Type'),h('select',{onchange:e=>{p.type=e.target.value;save();panel()}},opt(TYPES,p.type)),
     ...(p.type==='text'?[h('label',{},'Text (optional)'),h('textarea',{value:p.text||'',onchange:e=>{p.text=e.target.value;save()}})]:[]));
