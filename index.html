@@ -144,7 +144,7 @@ $('#vb').onclick=()=>{const e=$('#vpop');e.style.display=e.style.display==='bloc
 $('#arr').onclick=arrange;
 let drawId=null,cur=null;function kidsOf(id,seen=new Set([id])){const o=[];for(const q of Object.values(pts))if(q.to===id&&!seen.has(q.id)){seen.add(q.id);o.push(q,...kidsOf(q.id,seen))}return o}
 function wp(e){const r=svg.getBoundingClientRect(),p=pts[drawId];return[(e.clientX-r.left-view.x)/view.k-p.x,(e.clientY-r.top-view.y)/view.k-p.y]}
-function pe(d,p){return S('path',{d,transform:`translate(${p.cx!=null?p.cx:p.x} ${p.cy!=null?p.cy:p.y}) scale(${(p.sc||1.6)/Math.sqrt(view.k)})`,'pointer-events':'none',fill:'none',stroke:'var(--fg)','stroke-width':1.6,'stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'})}
+function pe(d,p){return S('path',{d,transform:`translate(${p.cx!=null?p.cx:p.x} ${p.cy!=null?p.cy:p.y}) scale(${(p.sc||2.5)/Math.sqrt(view.k)})`,'pointer-events':'none',fill:'none',stroke:'var(--fg)','stroke-width':1.6,'stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'})}
 function sm(a){const f=n=>Math.round(n*10)/10;let d=`M${f(a[0][0])} ${f(a[0][1])}`;for(let i=1;i<a.length-1;i++){const m=[(a[i][0]+a[i+1][0])/2,(a[i][1]+a[i+1][1])/2];d+=`Q${f(a[i][0])} ${f(a[i][1])} ${f(m[0])} ${f(m[1])}`}const l=a[a.length-1];return d+`L${f(l[0])} ${f(l[1])}`}
 function finishStroke(){const p=pts[drawId],a=cur;cur=null;if(!p||a.length<2){draw();return}p.paths=(p.paths||[]).concat(sm(a));put('points',pts,p)}
 const R=520;function ring(p){const m=Math.hypot(p.x,p.y);if(m<1){p.x=R;p.y=0}else{p.x*=R/m;p.y*=R/m}}
