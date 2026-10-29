@@ -210,12 +210,12 @@ function panel(){
   const save=()=>put('points',pts,p),opt=(m,cur)=>Object.entries(m).map(([k,v])=>{const o=h('option',{value:k},v);if(k===cur)o.selected=true;return o});
   el.append(
     h('div',{class:'ph'},h('span',{},'Point'),h('button',{class:'x','aria-label':'close',onclick:()=>{draft=null;sel=null;connFrom=null;drawId=null;cur=null;svg.style.cursor='';draw();panel()}},'×')),
-    h('label',{},'Name'),h('input',{value:p.title||'',onchange:e=>{p.title=e.target.value;save()}}),
-    h('div',{class:'two'},h('div',{},h('label',{},'Type'),h('select',{onchange:e=>{p.type=e.target.value;save();panel()}},opt(TYPES,p.type))),h('div',{},h('label',{},'Category'),h('select',{onchange:e=>{p.cat=e.target.value;save();panel()}},opt(CATS,p.cat)),p.cat==='other'?h('input',{placeholder:'Fill in the blank…',value:p.catOther||'',style:'margin-top:6px',onchange:e=>{p.catOther=e.target.value;save()}}):'')),
+    h('div',{class:'two'},h('div',{},h('label',{},'Name'),h('input',{value:p.title||'',onchange:e=>{p.title=e.target.value;save()}})),h('div',{},h('label',{},'Category'),h('select',{onchange:e=>{p.cat=e.target.value;save();panel()}},opt(CATS,p.cat)),p.cat==='other'?h('input',{placeholder:'Fill in the blank…',value:p.catOther||'',style:'margin-top:6px',onchange:e=>{p.catOther=e.target.value;save()}}):'')),
+    h('label',{},'Type'),h('select',{onchange:e=>{p.type=e.target.value;save();panel()}},opt(TYPES,p.type)),
     ...(p.type==='text'?[h('label',{},'Text (optional)'),h('textarea',{value:p.text||'',onchange:e=>{p.text=e.target.value;save()}})]:[]));
   if(p.type!=='text'){
     if(assets){const st=h('div',{class:'hint',style:'margin-top:4px'});
-      el.append(h('label',{},p.type==='image'?'Image file':'3D file (.ply / .glb / .gltf)'),h('input',{type:'file',accept:p.type==='image'?'image/*':'.ply,.glb,.gltf',onchange:async e=>{const f=e.target.files[0];if(!f)return;st.textContent='Uploading…';
+      el.append(h('input',{type:'file',style:'margin-top:6px',accept:p.type==='image'?'image/*':'.ply,.glb,.gltf',onchange:async e=>{const f=e.target.files[0];if(!f)return;st.textContent='Uploading…';
         try{const r=p.type==='image'?await assets.upload(f):await assets.upload(f,{type:'text/plain'});p.asset=r.id;p.assetName=f.name;await save();panel()}catch(err){st.textContent='Upload failed: '+(err.message||err.code||'rejected')+(p.type==='model'?' — re-export the PLY as ASCII (not binary) and try again':'')}}}),st)}
     else el.append(h('div',{class:'hint',style:'margin-top:8px'},'Uploading files needs editor access.'));
     if(p.asset&&p.type==='image')el.append(h('div',{style:'margin-top:8px'},h('img',{src:blobUrl(p.asset)})));
