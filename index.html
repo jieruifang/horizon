@@ -283,7 +283,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
   if(!window.THREE||!THREE.OrbitControls)return;
   const wrap=$('#mapwrap'),cv=document.createElement('canvas');cv.id='c3';cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:none;touch-action:none';wrap.insertBefore(cv,wrap.firstChild);
   const hid=document.createElementNS(NS,'svg');hid.style.cssText='position:absolute;width:0;height:0;visibility:hidden';document.body.append(hid);
-  let rotOn=true,hot=null,discs=[],on=false,sphere=true,mix=0,nodes=[],R3=10,rend,sc,cam,oc,lines=[],flatRing,rings=[],timer=0,raf=0;
+  let shift=0,shiftApplied=0,rotOn=true,hot=null,discs=[],on=false,sphere=true,mix=0,nodes=[],R3=10,rend,sc,cam,oc,lines=[],flatRing,rings=[],timer=0,raf=0;
   const CO=['flora','fauna','eco','trade','inst','story',''];
   const RQ=[[0,0],[1.05,0],[-1.05,0],[.5,1.57],[-.5,1.57],[1.57,.8],[.3,.4]].map(([x,y])=>new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,0)));
   const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim()||'#888';
@@ -340,7 +340,9 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
     nodes.links=links;nodes.dgs=dgs;
     size()}
   function size(){if(!rend)return;const w=cv.clientWidth,hh=cv.clientHeight;if(!w||!hh)return;rend.setSize(w,hh,false);cam.aspect=w/hh;cam.updateProjectionMatrix()}
-  function loop(){if(!on)return;raf=requestAnimationFrame(loop);mix+=((sphere?1:0)-mix)*.07;
+  function loop(){if(!on)return;raf=requestAnimationFrame(loop);
+    {const pn=$('#panel'),want=innerWidth>640&&pn.classList.contains('open')?(pn.offsetWidth+12)/2:0;shift+=(want-shift)*.14;if(Math.abs(want-shift)<.3)shift=want;
+      if(shift!==shiftApplied||cam.userData.w!==cv.clientWidth){shiftApplied=shift;const w=cv.clientWidth,hh=cv.clientHeight;cam.userData.w=w;if(shift){cam.setViewOffset(w,hh,-shift,0,w,hh)}else cam.clearViewOffset()}}mix+=((sphere?1:0)-mix)*.07;
     rings.forEach(l=>l.material.opacity=.3*mix);
     const sinE=cam.position.y/(cam.position.length()||1),tilt=.5*Math.max(0,Math.min(1,(sinE-.4)/.5));nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);{const nrm=n.grp.position.clone().normalize().lerp(cam.position.clone().sub(n.grp.position).normalize(),tilt).normalize();n.inner.quaternion.identity().slerp(upQ(nrm),mix)}});const ix={};nodes.forEach(n=>ix[n.id]=n);const cen={};Object.entries(nodes.dgs||{}).forEach(([k,d])=>{const c=new THREE.Vector3();d.ids.forEach(id=>c.add(ix[id].grp.position));c.multiplyScalar(1/d.ids.length);const dir=c.clone();if(dir.length()<.01)dir.set(0,1,0);dir.normalize();d.g.position.lerpVectors(c,dir.clone().multiplyScalar(R3-4.8),mix);cen[k]=d.g.position;d.g.quaternion.identity().slerp(d.q,mix)});(nodes.links||[]).forEach(k=>{const A=ix[k.a],C=cen[k.gk];if(!A||!C)return;const ps=k.l.geometry.attributes.position;ps.setXYZ(0,A.grp.position.x,A.grp.position.y,A.grp.position.z);ps.setXYZ(1,C.x,C.y,C.z);ps.needsUpdate=true;k.l.computeLineDistances();k.l.visible=true;k.l.material.opacity=.6});oc.update();rend.render(sc,cam)}
   const ray=new THREE.Raycaster(),mv=new THREE.Vector2();let dn=null;
