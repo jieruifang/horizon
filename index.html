@@ -288,12 +288,24 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
     if(!rend){rend=new THREE.WebGLRenderer({canvas:cv,antialias:true});rend.setPixelRatio(Math.min(devicePixelRatio,2));cam=new THREE.PerspectiveCamera(40,1,.1,300);oc=new THREE.OrbitControls(cam,cv);oc.enableDamping=true;oc.minDistance=8;oc.maxDistance=70;oc.autoRotateSpeed=.6;oc.autoRotate=true;let rt=0;oc.addEventListener('start',()=>{clearTimeout(rt);oc.autoRotate=false});oc.addEventListener('end',()=>{clearTimeout(rt);rt=setTimeout(()=>{oc.autoRotate=true},2500)});cam.position.set(0,17,19);oc.update()}
     const fg=css('--fg'),bg=css('--bg');rend.setClearColor(new THREE.Color(bg),1);
     sc=new THREE.Scene();nodes=[];
-    flatRing=ringLine(R3,fg);sc.add(flatRing);rings=RQ.map(q=>{const l=ringLine(R3,fg);l.quaternion.copy(q);sc.add(l);return l});
-    const list=Object.values(pts),byCat={};list.forEach(p=>{const k=Math.max(0,CO.indexOf(p.cat||''));(byCat[k]=byCat[k]||[]).push(p)});
-    const K=10/R;
+    flatRing=ringLine(R3,fg);sc.add(flatRing);rings=[];
+    const list=Object.values(pts),byId={};list.forEach(p=>byId[p.id]=p);
+    // connected points form a group that shares one ring and sits side by side
+    const uf={};const find=x=>uf[x]===x?x:(uf[x]=find(uf[x]));list.forEach(p=>uf[p.id]=p.id);
+    list.forEach(p=>{if(p.to&&byId[p.to])uf[find(p.id)]=find(p.to)});
+    const grpOf={};list.forEach(p=>{(grpOf[find(p.id)]=grpOf[find(p.id)]||[]).push(p)});
+    const comps=Object.values(grpOf).filter(g=>g.length>1);
+    const CAP=14,RQs=k=>k===0?new THREE.Quaternion():new THREE.Quaternion().setFromEuler(new THREE.Euler((k%2?1:-1)*1.05,(k-1)*.8,0));
+    const comps2=Object.values(grpOf).sort((a,b)=>Math.max(0,CO.indexOf(a[0].cat||''))-Math.max(0,CO.indexOf(b[0].cat||''))||Math.atan2(a[0].y,a[0].x)-Math.atan2(b[0].y,b[0].x));
+    const place={},ringsM=[[]];
+    comps2.forEach(g=>{g.sort((a,b)=>a.to===b.id?-1:b.to===a.id?1:0);let r=ringsM[ringsM.length-1];if(r.length&&r.length+g.length>CAP){r=[];ringsM.push(r)}r.push(...g)});
+    ringsM.forEach((m,k)=>{const q=RQs(k);m.forEach((p,i)=>{place[p.id]={q,ang:i/m.length*6.2832+k*.5}});if(k>0){const l=ringLine(R3,fg);l.quaternion.copy(q);sc.add(l);rings.push(l)}});
+    const K=10/R,info={};
+    list.forEach(p=>{const pl=place[p.id],P=new THREE.Vector3(Math.cos(pl.ang)*R3,0,Math.sin(pl.ang)*R3).applyQuaternion(pl.q),T=new THREE.Vector3(-Math.sin(pl.ang),0,Math.cos(pl.ang)).applyQuaternion(pl.q),Y=P.clone().normalize(),Z=new THREE.Vector3().crossVectors(T,Y);
+      info[p.id]={P,T,out:new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(T,Y,Z))}});
+    const links=[];
     list.forEach(p=>{
-      const k=Math.max(0,CO.indexOf(p.cat||'')),sib=byCat[k].sort((a,b)=>Math.atan2(a.y,a.x)-Math.atan2(b.y,b.x)),idx=sib.indexOf(p);
-      const grp=new THREE.Group(),inner=new THREE.Group(),a0=Math.atan2(p.y,p.x);
+      const grp=new THREE.Group(),inner=new THREE.Group(),a0=Math.atan2(p.y,p.x),I=info[p.id];
       const isT=p.type==='text',rad=isT?.4:1;
       const mat=new THREE.MeshBasicMaterial({color:new THREE.Color(bg),side:THREE.DoubleSide});
       const disc=new THREE.Mesh(new THREE.CircleGeometry(rad,48),mat);disc.rotation.x=-Math.PI/2;disc.position.y=.01;
@@ -302,17 +314,19 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       inner.add(disc,rim,dot);
       let src=null;if(p.type==='image'&&p.asset)src=blobUrl(p.asset);else if(p.type==='model'&&p.asset&&thumbs[p.asset])src=thumbs[p.asset][0];
       if(src)tex(src,t=>{mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true});
-      // drawing, same proportions as the map (marker radius 40 = disc radius 1)
-      const s=1/40*2.5/1,ox=p.cx!=null?(p.cx-p.x)*K:0,oz=p.cx!=null?(p.cy-p.y)*K:0;
-      (p.paths||[]).forEach(d=>{const pts2=sample(d).map(([x,y])=>new THREE.Vector3(ox+x*s*1,.02,oz+y*s*1));if(pts2.length>1)inner.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2),new THREE.LineBasicMaterial({color:fg})))});
+      // drawing sits on its point; a connected drawing slides halfway toward its partner so the two meet
+      const s=1/40*2.5,tg=p.to&&info[p.to]?info[p.to]:null,ox=tg?tg.P.clone().sub(I.P).dot(I.T)/2:0;
+      (p.paths||[]).forEach(d=>{const pts2=sample(d).map(([x,y])=>new THREE.Vector3(ox+x*s,.02,y*s));if(pts2.length>1)inner.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2),new THREE.LineBasicMaterial({color:fg})))});
       grp.add(inner);if(p.title)grp.add(label(p.title.slice(0,26),fg));sc.add(grp);
-      const ang=idx/sib.length*6.2832+k*.7,flat=new THREE.Vector3(Math.cos(a0)*R3,0,Math.sin(a0)*R3),sph=new THREE.Vector3(Math.cos(ang)*R3,0,Math.sin(ang)*R3).applyQuaternion(RQ[k]);
-      nodes.push({grp,inner,flat,sph,out:new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),sph.clone().normalize())})});
+      const flat=new THREE.Vector3(Math.cos(a0)*R3,0,Math.sin(a0)*R3);
+      nodes.push({id:p.id,grp,inner,flat,sph:I.P,out:I.out});
+      if(tg){const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineDashedMaterial({color:fg,dashSize:.15,gapSize:.25,transparent:true,opacity:.6}));l.frustumCulled=false;sc.add(l);links.push({a:p.id,b:p.to,l})}});
+    nodes.links=links;
     size()}
   function size(){if(!rend)return;const w=cv.clientWidth,hh=cv.clientHeight;if(!w||!hh)return;rend.setSize(w,hh,false);cam.aspect=w/hh;cam.updateProjectionMatrix()}
   function loop(){if(!on)return;raf=requestAnimationFrame(loop);mix+=((sphere?1:0)-mix)*.07;
-    flatRing.material.opacity=.3*(1-mix);rings.forEach(l=>l.material.opacity=.3*mix);
-    nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);n.inner.quaternion.identity().slerp(n.out,mix)});oc.update();rend.render(sc,cam)}
+    rings.forEach(l=>l.material.opacity=.3*mix);
+    nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);n.inner.quaternion.identity().slerp(n.out,mix)});const ix={};nodes.forEach(n=>ix[n.id]=n);(nodes.links||[]).forEach(k=>{const A=ix[k.a],B=ix[k.b];if(!A||!B)return;const ps=k.l.geometry.attributes.position;ps.setXYZ(0,A.grp.position.x,A.grp.position.y,A.grp.position.z);ps.setXYZ(1,B.grp.position.x,B.grp.position.y,B.grp.position.z);ps.needsUpdate=true;k.l.computeLineDistances();k.l.visible=mix>.05});oc.update();rend.render(sc,cam)}
   const rebuild=()=>{if(!on)return;clearTimeout(timer);timer=setTimeout(build,250)};
   const tg=h('button',{id:'v3t',title:'Switch between the flat circle (editable) and the sphere of rings'},'Sphere');$('header').insertBefore(tg,$('#arr'));
   tg.onclick=()=>{on=!on;tg.textContent=on?'Circle':'Sphere';cv.style.display=on?'block':'none';$('#map').style.visibility=on?'hidden':'';$('#add').style.visibility=on?'hidden':'';
