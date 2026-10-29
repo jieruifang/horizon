@@ -78,7 +78,7 @@ function figure(name,id){
   else if(name==='pendulum'){let d='M0 -70V-62';for(const a of[-.9,-.45,0,.45,.9]){const x=Math.sin(a)*105,y=-62+Math.cos(a)*105;d+=`M0 -62L${f(x)} ${f(y)}`;dot(x,y,3)}path(d);path('M-82 3A105 105 0 0 0 82 3',{'stroke-dasharray':'2 5'})}
   return g}
 const NS='http://www.w3.org/2000/svg',$=s=>document.querySelector(s);
-let pts={},lns={},ro=null,live=null,vers=[],vname='',vmsg='',hashDone=0,sel=null,connFrom=null,view={x:0,y:0,k:1},db=null,assets=null,dragging=false;
+let pts={},lns={},ro=null,live=null,vers=[],vname='',vmsg='',hashDone=0,sel=null,connFrom=null,view={x:0,y:0,k:1},db=null,assets=null,dragging=false,draft=null;
 function h(t,a={},...k){const e=document.createElement(t);for(const x in a){if(x.startsWith('on'))e.addEventListener(x.slice(2),a[x]);else if(x==='value')e.value=a[x];else e.setAttribute(x,a[x])}k.flat().forEach(c=>e.append(c));return e}
 function S(t,a={}){const e=document.createElementNS(NS,t);for(const x in a)e.setAttribute(x,a[x]);return e}
 const uid=()=>'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
@@ -88,9 +88,9 @@ $('#th').onclick=()=>{const r=document.documentElement,n=r.dataset.theme==='dark
 // storage
 function local(){try{localStorage.setItem('ll_local',JSON.stringify({pts,lns}))}catch(e){}}
 function loadLocal(){try{const d=JSON.parse(localStorage.getItem('ll_local')||'{}');pts=d.pts||{};lns=d.lns||{}}catch(e){}}
-async function put(name,store,o){if(ro)return;store[o.id]=o;draw();if(db){try{await db.collection(name).doc(o.id).set({...o})}catch(e){console.error(e)}}else local()}
+async function put(name,store,o){if(ro)return;if(draft&&draft.id===o.id)draft=null;store[o.id]=o;draw();if(db){try{await db.collection(name).doc(o.id).set({...o})}catch(e){console.error(e)}}else local()}
 async function del(name,store,id){if(ro)return;delete store[id];draw();if(db){try{await db.collection(name).doc(id).delete()}catch(e){console.error(e)}}else local()}
-function sub(name,store){db.collection(name).onSnapshot(s=>{if(dragging)return;for(const k in store)delete store[k];s.docs.forEach(d=>{store[d.id]={...d.data(),id:d.id}});if(store===pts)for(const k in pts)ring(pts[k]);if(!fitted&&Object.keys(pts).length){fitted=1;fit()}draw();if(sel&&!pts[sel]){sel=null;panel()}},e=>console.error(e))}
+function sub(name,store){db.collection(name).onSnapshot(s=>{if(dragging)return;for(const k in store)delete store[k];s.docs.forEach(d=>{store[d.id]={...d.data(),id:d.id}});if(store===pts)for(const k in pts)ring(pts[k]);if(!fitted&&Object.keys(pts).length){fitted=1;fit()}draw();if(sel&&!pts[sel]&&!(draft&&draft.id===sel)){sel=null;panel()}},e=>console.error(e))}
 (async()=>{
   try{if(SUPA_ON&&window.supabase){const A=makeSupabase();db=A.db;assets=A.assets}}catch(e){console.error(e)}
   await 0;
@@ -131,8 +131,8 @@ async function saveV(){if(ro||!db)return;const items=Object.values(pts);if(!item
     vname='';vmsg='Saved.'}catch(e){console.error(e);vmsg='Could not save: '+(e.message||e.code||'error')}
   renderV()}
 async function openV(id){try{const q=await db.collection('vdata').where('v','==',id).get(),arr=q.docs.map(d=>d.data()).sort((a,b)=>a.i-b.i),o={};arr.forEach(c=>c.items.forEach(p=>{o[p.id]=p}));
-    if(!ro)live={pts,lns};ro=id;pts=o;lns={};sel=null;$('#vpop').style.display='none';panel();bar();$('#add').style.display='none';draw()}catch(e){console.error(e);vmsg='Could not open that version.';renderV()}}
-function goLive(){if(!ro)return;pts=live.pts;lns=live.lns;live=null;ro=null;sel=null;panel();bar();draw()}
+    if(!ro)live={pts,lns};ro=id;pts=o;lns={};draft=null;sel=null;$('#vpop').style.display='none';panel();bar();$('#add').style.display='none';draw()}catch(e){console.error(e);vmsg='Could not open that version.';renderV()}}
+function goLive(){if(!ro)return;pts=live.pts;lns=live.lns;live=null;ro=null;draft=null;sel=null;panel();bar();draw()}
 async function delV(id){try{const q=await db.collection('vdata').where('v','==',id).get();for(const d of q.docs)await db.collection('vdata').doc(d.id).delete();await db.collection('versions').doc(id).delete();if(ro===id)goLive();vmsg='Deleted.'}catch(e){console.error(e);vmsg='Could not delete.'}renderV()}
 function bar(){const b=$('#vbar');$('#arr').style.display=ro?'none':'';if(!ro){b.style.display='none';return}
   const i=vers.findIndex(v=>v.id===ro),v=vers[i];if(!v){goLive();return}
@@ -200,15 +200,15 @@ function click(id){
   if(connFrom&&id&&id!==connFrom){put('links',lns,{id:uid(),a:connFrom,b:id});connFrom=null;sel=id;draw();panel();return}
   connFrom=null;sel=id||null;draw();panel()}
 // add
-$('#add').onclick=()=>{if(ro)return;const[x,y]=center(),p={id:uid(),type:'image',cat:'trade',title:'Untitled',text:'',...(()=>{let best=0,bd=-1;for(let i=0;i<48;i++){const t=i/48*6.283;let m=1e9;for(const o of Object.values(pts))m=Math.min(m,Math.hypot(o.x-Math.cos(t)*R,o.y-Math.sin(t)*R));if(m>bd){bd=m;best=t}}return{x:Math.cos(best)*R,y:Math.sin(best)*R}})()};sel=p.id;put('points',pts,p);panel()};
+$('#add').onclick=()=>{if(ro)return;const[x,y]=center(),p={id:uid(),type:'image',cat:'trade',title:'Untitled',text:'',...(()=>{let best=0,bd=-1;for(let i=0;i<48;i++){const t=i/48*6.283;let m=1e9;for(const o of Object.values(pts))m=Math.min(m,Math.hypot(o.x-Math.cos(t)*R,o.y-Math.sin(t)*R));if(m>bd){bd=m;best=t}}return{x:Math.cos(best)*R,y:Math.sin(best)*R}})()};draft=p;sel=p.id;panel()};
 // panel
 function panel(){
-  const el=$('#panel');const p=pts[sel];
+  const el=$('#panel');const p=pts[sel]||(draft&&draft.id===sel?draft:null);
   if(!p){el.classList.remove('open');$('#add').style.display=ro?'none':'';setTimeout(()=>{if(!pts[sel])el.textContent=''},400);return}
   el.textContent='';el.classList.add('open');$('#add').style.display='none';
   const save=()=>put('points',pts,p),opt=(m,cur)=>Object.entries(m).map(([k,v])=>{const o=h('option',{value:k},v);if(k===cur)o.selected=true;return o});
   el.append(
-    h('div',{class:'ph'},h('span',{},'Point'),h('button',{class:'x','aria-label':'close',onclick:()=>{sel=null;connFrom=null;drawId=null;cur=null;svg.style.cursor='';draw();panel()}},'×')),
+    h('div',{class:'ph'},h('span',{},'Point'),h('button',{class:'x','aria-label':'close',onclick:()=>{draft=null;sel=null;connFrom=null;drawId=null;cur=null;svg.style.cursor='';draw();panel()}},'×')),
     h('label',{},'Name'),h('input',{value:p.title||'',onchange:e=>{p.title=e.target.value;save()}}),
     h('label',{},'Type'),h('select',{onchange:e=>{p.type=e.target.value;save();panel()}},opt(TYPES,p.type)),
     ...(p.type==='text'?[h('label',{},'Text (optional)'),h('textarea',{value:p.text||'',onchange:e=>{p.text=e.target.value;save()}})]:[]));
@@ -224,7 +224,7 @@ function panel(){
   el.append(h('label',{},'Path'),h('div',{class:'hint'},'Draw this point\'s sphere of influence: the journeys it makes and how it shapes its environment. Start near the centre dot, and use as many strokes as you like.'),pad(p),h('div',{class:'row',style:'margin-top:6px'},h('button',{onclick:()=>{(p.paths||[]).pop();save();panel()}},'Undo'),h('button',{onclick:()=>{p.paths=[];save();panel()}},'Clear')),h('label',{},'Connect'),h('div',{class:'hint'},'The two drawings move together inside the circle and overlap. Drag a drawing on the map to adjust it.'),h('select',{onchange:e=>{const v=e.target.value;if(v==='__self'){delete p.cx;delete p.cy;delete p.to;save();panel();return}const t=pts[v];if(!t)return;const m=t.cx!=null?[t.cx,t.cy]:[(t.x+p.x)/4,(t.y+p.y)/4];if(t.cx==null){t.cx=m[0];t.cy=m[1];put('points',pts,t)}const a=Math.atan2(p.y-m[1],p.x-m[0]),d=50;p.cx=m[0]+Math.cos(a)*d;p.cy=m[1]+Math.sin(a)*d;p.to=t.id;save();panel()}},h('option',{value:''},'Choose a point…'),p.cx!=null?h('option',{value:'__self'},'Release (back to its own point)'):'',Object.values(pts).filter(o=>o.id!==p.id).map(o=>h('option',{value:o.id},(o.title||'Untitled')+' · '+(o.cat==='other'&&o.catOther?o.catOther:(CATS[o.cat]||''))))));
   const mine=Object.values(lns).filter(l=>l.a===sel||l.b===sel);
   if(false){el.append(h('label',{},'connections'));mine.forEach(l=>{const o=pts[l.a===sel?l.b:l.a];el.append(h('div',{class:'row',style:'margin:3px 0;align-items:center'},h('span',{style:'flex:1'},'→ '+(o?o.title:'?')),h('button',{onclick:()=>{del('links',lns,l.id);panel()}},'×')))})}
-  el.append(h('div',{class:'row',style:'margin-top:22px'},h('button',{class:'del',onclick:()=>{if(confirm('Delete this point?')){Object.values(lns).filter(l=>l.a===sel||l.b===sel).forEach(l=>del('links',lns,l.id));del('points',pts,sel);sel=null;panel()}}},'Delete')));
+  el.append(h('div',{class:'row',style:'margin-top:22px'},h('button',{class:'del',onclick:()=>{if(confirm('Delete this point?')){Object.values(lns).filter(l=>l.a===sel||l.b===sel).forEach(l=>del('links',lns,l.id));del('points',pts,sel);draft=null;sel=null;panel()}}},'Delete')));
   el.append(h('div',{id:'hint',class:'hint',style:'margin-top:8px'},drawId===sel?'Draw on the map with your finger or mouse. Panning is off until you press done drawing.':''));
 }
 const thumbs={},busy={};let spin=0;setInterval(()=>{spin++;document.querySelectorAll('image[data-spin]').forEach(im=>{const f=thumbs[im.getAttribute('data-spin')];if(f)im.setAttribute('href',f[spin%f.length])})},200);
