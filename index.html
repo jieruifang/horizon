@@ -316,7 +316,8 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       const isT=p.type==='text',rad=isT?.4:1;
       const mat=new THREE.MeshBasicMaterial({color:new THREE.Color(bg),side:THREE.DoubleSide});
       const disc=new THREE.Mesh(new THREE.CircleGeometry(rad,48),mat);disc.rotation.x=-Math.PI/2;disc.position.y=.06;
-      const rim=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:65},(_,i)=>new THREE.Vector3(Math.cos(i/64*6.2832)*rad,0,Math.sin(i/64*6.2832)*rad))),new THREE.LineBasicMaterial({color:fg}));rim.position.y=.07;
+      const ci=Object.keys(CATS).indexOf(p.cat),dp=p.cat&&ci>=0?DASH[ci].split(' ').map(Number):[1,0],solid=dp[1]===0;
+      const rim=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:129},(_,i)=>new THREE.Vector3(Math.cos(i/128*6.2832)*rad,0,Math.sin(i/128*6.2832)*rad))),solid?new THREE.LineBasicMaterial({color:fg}):new THREE.LineDashedMaterial({color:fg,dashSize:Math.max(dp[0],1.2)/40*1.6,gapSize:dp[1]/40*1.6}));if(!solid)rim.computeLineDistances();rim.position.y=.07;
       const dot=new THREE.Mesh(new THREE.CircleGeometry(.1,16),new THREE.MeshBasicMaterial({color:fg,side:THREE.DoubleSide}));dot.rotation.x=-Math.PI/2;dot.position.y=.08;
       inner.add(disc,rim,dot);discs.push(disc);
       let src=null;if(p.type==='image'&&p.asset)src=blobUrl(p.asset);else if(p.type==='model'&&p.asset&&thumbs[p.asset])src=thumbs[p.asset][0];
