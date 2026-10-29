@@ -208,7 +208,7 @@ svg.addEventListener('pointermove',e=>{if(!P.has(e.pointerId))return;P.set(e.poi
   if(cur){const a=wp(e),l=cur[cur.length-1];if(Math.hypot(a[0]-l[0],a[1]-l[1])*view.k>4){cur.push(a);draw()}return}if(!drag)return;const dx=e.clientX-drag.sx,dy=e.clientY-drag.sy;
   if(!drag.moved&&Math.hypot(dx,dy)>6)drag.moved=true;if(!drag.moved)return;
   if(drag.dw){const q=pts[drag.dw];dragging=true;q.cx=drag.cx+dx/view.k;q.cy=drag.cy+dy/view.k;drag.kids.forEach(k=>{const o=pts[k.id];if(o){o.cx=k.cx+dx/view.k;o.cy=k.cy+dy/view.k}});draw()}else if(drag.id){dragging=true;const q=pts[drag.id];let x=drag.px+dx/view.k,y=drag.py+dy/view.k;const m=Math.hypot(x,y)||1;x*=R/m;y*=R/m;q.x=x;q.y=y;draw()}else{view.x=drag.vx+dx;view.y=drag.vy+dy;apply()}});
-function up(e){P.delete(e.pointerId);if(cd){const c=cd;cd=null;svg.style.cursor='';if(c.over&&pts[c.from]&&pts[c.over])applyConnect(pts[c.from],pts[c.over]);draw();return}if(pinch){if(P.size<2)pinch=null;drag=null;return}
+function up(e){P.delete(e.pointerId);if(cd){const c=cd;cd=null;svg.style.cursor='';if(c.over&&pts[c.from]&&pts[c.over])applyConnect(pts[c.from],pts[c.over]);else if(pts[c.from]){connMode=true;connFrom=c.from;sel=null;panel()}draw();connUI();return}if(pinch){if(P.size<2)pinch=null;drag=null;return}
   if(cur){finishStroke();return}if(!drag)return;const d=drag;drag=null;dragging=false;
   if(d.moved){if(d.dw){put('points',pts,pts[d.dw]);d.kids.forEach(k=>{if(pts[k.id])put('points',pts,pts[k.id])})}else if(d.id)put('points',pts,pts[d.id])}else click(d.id||d.dw)}
 svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
