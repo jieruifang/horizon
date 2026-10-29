@@ -211,8 +211,8 @@ function connList(p){
   const rows=[];if(p.to&&pts[p.to])rows.push({o:pts[p.to],rel:()=>{delete p.cx;delete p.cy;delete p.to;put('points',pts,p);panel()}});
   Object.values(pts).filter(q=>q.to===p.id).forEach(q=>rows.push({o:q,rel:()=>{delete q.cx;delete q.cy;delete q.to;put('points',pts,q);panel()}}));
   if(!rows.length)return '';
-  return h('div',{},h('label',{},'Connections'),...rows.map(r=>h('div',{class:'row',style:'margin-top:2px;align-items:center;flex-wrap:nowrap;gap:8px'},
-    h('span',{style:'flex:1;min-width:0;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-bottom:1px dotted var(--dim);padding:5px 0',title:'Open this point',onclick:()=>{sel=r.o.id;draw();panel()}},r.o.title||'Untitled'),
+  return h('div',{},h('label',{},'Connections'),...rows.map(r=>h('div',{class:'row',style:'margin-top:6px;align-items:center;flex-wrap:nowrap;gap:6px'},
+    h('button',{style:'flex:1;min-width:0;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap',title:'Open this point',onclick:()=>{sel=r.o.id;draw();panel()}},r.o.title||'Untitled'),
     h('button',{class:'x','aria-label':'Remove this connection',title:'Remove this connection',onclick:r.rel},'×'))))}
 function connUI(){const b=$('#conn');if(!b)return;const ok=!ro&&!document.body.classList.contains('is3d')&&Object.keys(pts).length>1;b.style.display=ok?'':'none';if(!ok&&connMode){connMode=false;connFrom=null}
   b.textContent=!connMode?'Connect':connFrom?'Tap the point to connect it to':'Tap a point to start';b.classList.toggle('on',connMode);svg.style.cursor=connMode?'crosshair':''}
