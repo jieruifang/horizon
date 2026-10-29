@@ -285,7 +285,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
   const sample=d=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',d);hid.append(p);let out=[];try{const L=p.getTotalLength(),n=Math.max(8,Math.min(120,Math.round(L/4)));for(let i=0;i<=n;i++){const q=p.getPointAtLength(L*i/n);out.push([q.x,q.y])}}catch(e){}p.remove();return out};
 
   function build(){
-    if(!rend){rend=new THREE.WebGLRenderer({canvas:cv,antialias:true});rend.setPixelRatio(Math.min(devicePixelRatio,2));cam=new THREE.PerspectiveCamera(40,1,.1,300);oc=new THREE.OrbitControls(cam,cv);oc.enableDamping=true;oc.minDistance=8;oc.maxDistance=70;oc.autoRotateSpeed=.5;cam.position.set(0,17,19);oc.update()}
+    if(!rend){rend=new THREE.WebGLRenderer({canvas:cv,antialias:true});rend.setPixelRatio(Math.min(devicePixelRatio,2));cam=new THREE.PerspectiveCamera(40,1,.1,300);oc=new THREE.OrbitControls(cam,cv);oc.enableDamping=true;oc.minDistance=8;oc.maxDistance=70;oc.autoRotateSpeed=.6;oc.autoRotate=true;let rt=0;oc.addEventListener('start',()=>{clearTimeout(rt);oc.autoRotate=false});oc.addEventListener('end',()=>{clearTimeout(rt);rt=setTimeout(()=>{oc.autoRotate=true},2500)});cam.position.set(0,17,19);oc.update()}
     const fg=css('--fg'),bg=css('--bg');rend.setClearColor(new THREE.Color(bg),1);
     sc=new THREE.Scene();nodes=[];
     flatRing=ringLine(R3,fg);sc.add(flatRing);rings=RQ.map(q=>{const l=ringLine(R3,fg);l.quaternion.copy(q);sc.add(l);return l});
