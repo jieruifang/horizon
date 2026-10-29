@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Ccircle cx='32' cy='30' r='24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-dasharray='1.2 5.2' stroke-linecap='round'/%3E%3Ccircle cx='32' cy='30' r='9.5' fill='%23fff'/%3E%3Cpath d='M32 41V63' stroke='%23fff' stroke-width='2' stroke-dasharray='3 4'/%3E%3C/svg%3E">
 <title>Speculative mapping exercise</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Newsreader:ital,wght@0,400;1,400&display=swap">
@@ -275,7 +276,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
   if(!window.THREE||!THREE.OrbitControls)return;
   const wrap=$('#mapwrap'),cv=document.createElement('canvas');cv.id='c3';cv.style.cssText='position:absolute;inset:0;width:100%;height:100%;display:none;touch-action:none';wrap.insertBefore(cv,wrap.firstChild);
   const hid=document.createElementNS(NS,'svg');hid.style.cssText='position:absolute;width:0;height:0;visibility:hidden';document.body.append(hid);
-  let on=false,sphere=true,mix=0,nodes=[],R3=10,rend,sc,cam,oc,lines=[],flatRing,rings=[],timer=0,raf=0;
+  let hot=null,discs=[],on=false,sphere=true,mix=0,nodes=[],R3=10,rend,sc,cam,oc,lines=[],flatRing,rings=[],timer=0,raf=0;
   const CO=['flora','fauna','eco','trade','inst','story',''];
   const RQ=[[0,0],[1.05,0],[-1.05,0],[.5,1.57],[-.5,1.57],[1.57,.8],[.3,.4]].map(([x,y])=>new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,0)));
   const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim()||'#888';
@@ -309,7 +310,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
     const K=10/R,info={};
     list.forEach(p=>{const pl=place[p.id],P=new THREE.Vector3(Math.cos(pl.ang)*R3,0,Math.sin(pl.ang)*R3).applyQuaternion(pl.q),T=new THREE.Vector3(-Math.sin(pl.ang),0,Math.cos(pl.ang)).applyQuaternion(pl.q),Y=P.clone().normalize(),Z=new THREE.Vector3().crossVectors(T,Y);
       info[p.id]={P,T,out:new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(T,Y,Z))}});
-    const links=[],dgs={};
+    const links=[],dgs={};discs.length=0;
     list.forEach(p=>{
       const grp=new THREE.Group(),inner=new THREE.Group(),a0=Math.atan2(p.y,p.x),I=info[p.id];
       const isT=p.type==='text',rad=isT?.4:1;
@@ -317,13 +318,13 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       const disc=new THREE.Mesh(new THREE.CircleGeometry(rad,48),mat);disc.rotation.x=-Math.PI/2;disc.position.y=.01;
       const rim=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:65},(_,i)=>new THREE.Vector3(Math.cos(i/64*6.2832)*rad,0,Math.sin(i/64*6.2832)*rad))),new THREE.LineBasicMaterial({color:fg}));rim.position.y=.02;
       const dot=new THREE.Mesh(new THREE.CircleGeometry(.1,16),new THREE.MeshBasicMaterial({color:fg,side:THREE.DoubleSide}));dot.rotation.x=-Math.PI/2;dot.position.y=.03;
-      inner.add(disc,rim,dot);
+      inner.add(disc,rim,dot);discs.push(disc);
       let src=null;if(p.type==='image'&&p.asset)src=blobUrl(p.asset);else if(p.type==='model'&&p.asset&&thumbs[p.asset])src=thumbs[p.asset][0];
       if(src)tex(src,t=>{mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true});
       // drawing sits on its point; a connected drawing slides halfway toward its partner so the two meet
       const s=1/40*2.5,gk=grpOf[find(p.id)].length>1?find(p.id):null,tgt=gk?(dgs[gk]=dgs[gk]||{g:new THREE.Group(),ids:[]}):null;if(tgt){tgt.ids.push(p.id);if(!tgt.added){tgt.added=1;sc.add(tgt.g)}}
       (p.paths||[]).forEach(d=>{const pts2=sample(d).map(([x,y])=>new THREE.Vector3(x*s,.02,y*s));if(pts2.length>1)(tgt?tgt.g:inner).add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2),new THREE.LineBasicMaterial({color:fg})))});
-      grp.add(inner);if(p.title)grp.add(label(p.title.slice(0,26),fg));sc.add(grp);
+      disc.userData.gk=gk;grp.add(inner);if(p.title)grp.add(label(p.title.slice(0,26),fg));sc.add(grp);
       const flat=new THREE.Vector3(Math.cos(a0)*R3,0,Math.sin(a0)*R3);
       nodes.push({id:p.id,grp,inner,flat,sph:I.P,out:I.out});
       if(tgt){const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]),new THREE.LineDashedMaterial({color:fg,dashSize:.15,gapSize:.25,transparent:true,opacity:.6}));l.frustumCulled=false;sc.add(l);links.push({a:p.id,gk,l})}});
@@ -332,7 +333,10 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
   function size(){if(!rend)return;const w=cv.clientWidth,hh=cv.clientHeight;if(!w||!hh)return;rend.setSize(w,hh,false);cam.aspect=w/hh;cam.updateProjectionMatrix()}
   function loop(){if(!on)return;raf=requestAnimationFrame(loop);mix+=((sphere?1:0)-mix)*.07;
     rings.forEach(l=>l.material.opacity=.3*mix);
-    nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);n.inner.quaternion.identity().slerp(n.out,mix)});const ix={};nodes.forEach(n=>ix[n.id]=n);const cen={};Object.entries(nodes.dgs||{}).forEach(([k,d])=>{const c=new THREE.Vector3();d.ids.forEach(id=>c.add(ix[id].grp.position));c.multiplyScalar(1/d.ids.length);cen[k]=c;d.g.position.copy(c);const dir=c.clone();if(dir.length()<.01)dir.set(0,1,0);d.g.quaternion.identity().slerp(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize()),mix)});(nodes.links||[]).forEach(k=>{const A=ix[k.a],C=cen[k.gk];if(!A||!C)return;const ps=k.l.geometry.attributes.position;ps.setXYZ(0,A.grp.position.x,A.grp.position.y,A.grp.position.z);ps.setXYZ(1,C.x,C.y,C.z);ps.needsUpdate=true;k.l.computeLineDistances();k.l.visible=true});oc.update();rend.render(sc,cam)}
+    nodes.forEach(n=>{n.grp.position.lerpVectors(n.flat,n.sph,mix);n.inner.quaternion.identity().slerp(n.out,mix)});const ix={};nodes.forEach(n=>ix[n.id]=n);const cen={};Object.entries(nodes.dgs||{}).forEach(([k,d])=>{const c=new THREE.Vector3();d.ids.forEach(id=>c.add(ix[id].grp.position));c.multiplyScalar(1/d.ids.length);const dir=c.clone();if(dir.length()<.01)dir.set(0,1,0);dir.normalize();d.g.position.lerpVectors(c,dir.clone().multiplyScalar(R3+2.6),mix);cen[k]=d.g.position;d.g.quaternion.identity().slerp(new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),dir),mix)});(nodes.links||[]).forEach(k=>{const A=ix[k.a],C=cen[k.gk];if(!A||!C)return;const ps=k.l.geometry.attributes.position;ps.setXYZ(0,A.grp.position.x,A.grp.position.y,A.grp.position.z);ps.setXYZ(1,C.x,C.y,C.z);ps.needsUpdate=true;k.l.computeLineDistances();k.l.visible=true;k.l.material.opacity=hot===k.gk?.95:.18});oc.update();rend.render(sc,cam)}
+  const ray=new THREE.Raycaster(),mv=new THREE.Vector2();
+  const pick=e=>{if(!on||!cam)return;const b=cv.getBoundingClientRect();mv.set((e.clientX-b.left)/b.width*2-1,-((e.clientY-b.top)/b.height)*2+1);ray.setFromCamera(mv,cam);const h=ray.intersectObjects(discs,false)[0];hot=h&&h.object.userData.gk||null};
+  cv.addEventListener('pointermove',pick);cv.addEventListener('pointerdown',pick);
   const rebuild=()=>{if(!on)return;clearTimeout(timer);timer=setTimeout(build,250)};
   const tg=h('button',{id:'v3t',title:'Switch between the flat circle (editable) and the sphere of rings'},'Sphere');$('header').insertBefore(tg,$('#arr'));
   tg.onclick=()=>{on=!on;tg.textContent=on?'Circle':'Sphere';cv.style.display=on?'block':'none';$('#map').style.visibility=on?'hidden':'';$('#add').style.visibility=on?'hidden':'';
