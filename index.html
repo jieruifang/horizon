@@ -170,13 +170,13 @@ function pad(p,row){
   const W=240,H=240,s=S('svg',{viewBox:`${-W/2} ${-H/2} ${W} ${H}`,width:'100%',style:'box-sizing:border-box;max-height:200px;border:1px solid var(--line);touch-action:pan-y;display:block;background:var(--bg);cursor:crosshair'});
   
   const gr=S('g',{fill:'none',stroke:'var(--fg)','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});s.append(gr);s.append(S('circle',{r:40,fill:'var(--fg)','fill-opacity':.85,stroke:'none','pointer-events':'none'}));
-  const ph=S('text',{y:98,'text-anchor':'middle','font-size':11,fill:'var(--dim)','pointer-events':'none','font-family':'inherit'});ph.textContent=matchMedia('(hover:none)').matches?'Tap to start drawing':'Draw here';s.append(ph);let started=false;
+  const ph=S('text',{y:-62,'text-anchor':'middle','font-size':11,fill:'var(--dim)','pointer-events':'none','font-family':'inherit'});ph.textContent=matchMedia('(hover:none)').matches?'Tap to start drawing':'Draw here';s.append(ph);let started=false;
   const show=()=>{gr.textContent='';(p.paths||[]).forEach(d=>gr.append(S('path',{d})));ph.style.display=started||(p.paths||[]).length?'none':''};show();
   let a=null,live=null;
   const pt=e=>{const r=s.getBoundingClientRect();let x=(e.clientX-r.left)/r.width*W-W/2,y=(e.clientY-r.top)/r.height*H-H/2;x=Math.max(-W/2,Math.min(W/2,x));y=Math.max(-H/2,Math.min(H/2,y));return[x,y]};
   // on touch screens the box scrolls with the page until it is tapped, so a swipe doesn't draw
   const touch=matchMedia('(hover:none)').matches;let on=!touch,tap=null;
-  const done=h('button',{onclick:()=>set(false)},'Done'),tip=h('div',{class:'hint',style:'margin:0 0 6px;visibility:hidden'},'Drawing. Tap done to stop and scroll again.');if(touch&&row)row.append(done);
+  const done=h('button',{onclick:()=>set(false)},'Done drawing'),tip=h('div',{class:'hint',style:'margin:0 0 6px;visibility:hidden'},'Drawing. Tap done to stop and scroll again.');if(touch&&row)row.append(done);
   const set=v=>{on=v;if(v){started=true;show()};s.style.touchAction=v?'none':'pan-y';s.style.borderColor=v?'var(--fg)':'';done.style.display=touch&&v?'':'none';tip.style.visibility=touch&&v?'visible':'hidden'};set(on);
   s.addEventListener('pointerdown',e=>{if(!on){tap={x:e.clientX,y:e.clientY};return}s.setPointerCapture(e.pointerId);started=true;ph.style.display='none';a=[pt(e)];live=S('path',{});gr.append(live);e.preventDefault()});
   s.addEventListener('pointermove',e=>{if(!a)return;const q=pt(e),l=a[a.length-1];if(Math.hypot(q[0]-l[0],q[1]-l[1])>3){a.push(q);live.setAttribute('d',sm(a))}});
