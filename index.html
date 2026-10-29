@@ -286,7 +286,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
   const RQ=[[0,0],[1.05,0],[-1.05,0],[.5,1.57],[-.5,1.57],[1.57,.8],[.3,.4]].map(([x,y])=>new THREE.Quaternion().setFromEuler(new THREE.Euler(x,y,0)));
   const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim()||'#888';
   const ringLine=(rad,col)=>{const l=new THREE.Line(new THREE.BufferGeometry().setFromPoints(Array.from({length:181},(_,i)=>new THREE.Vector3(Math.cos(i/180*6.2832)*rad,0,Math.sin(i/180*6.2832)*rad))),new THREE.LineBasicMaterial({color:col,transparent:true,opacity:.3}));return l};
-  const tex=(src,cb)=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#0a0a0a';x.fillRect(0,0,128,128);try{x.filter='grayscale(1) contrast(1.15)'}catch(e){}const s=Math.max(128/im.width,128/im.height);x.drawImage(im,(128-im.width*s)/2,(128-im.height*s)/2,im.width*s,im.height*s);const t=new THREE.CanvasTexture(c);cb(t)};im.src=src};
+  const tex=(src,cb,gray)=>{const im=new Image();im.crossOrigin='anonymous';im.onload=()=>{const c=document.createElement('canvas');c.width=c.height=128;const x=c.getContext('2d');x.fillStyle='#0a0a0a';x.fillRect(0,0,128,128);if(gray){try{x.filter='grayscale(1) contrast(1.15)'}catch(e){}}const s=Math.max(128/im.width,128/im.height);x.drawImage(im,(128-im.width*s)/2,(128-im.height*s)/2,im.width*s,im.height*s);const t=new THREE.CanvasTexture(c);cb(t)};im.src=src};
   const label=(t,col)=>{const c=document.createElement('canvas');c.width=512;c.height=64;const x=c.getContext('2d');x.font='500 30px "IBM Plex Mono",monospace';x.fillStyle=col;x.textAlign='center';x.textBaseline='middle';x.fillText(t,256,34);const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthTest:false}));s.scale.set(4,.5,1);s.center.set(.5,3.6);return s};
   const sample=d=>{const p=document.createElementNS(NS,'path');p.setAttribute('d',d);hid.append(p);let out=[];try{const L=p.getTotalLength(),n=Math.max(8,Math.min(120,Math.round(L/4)));for(let i=0;i<=n;i++){const q=p.getPointAtLength(L*i/n);out.push([q.x,q.y])}}catch(e){}p.remove();return out};
 
@@ -327,7 +327,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       const dot=new THREE.Mesh(new THREE.CircleGeometry(.1,16),new THREE.MeshBasicMaterial({color:fg,side:THREE.DoubleSide}));dot.rotation.x=-Math.PI/2;dot.position.y=.08;
       inner.add(disc,rim,dot);discs.push(disc);
       let src=null;if(p.type==='image'&&p.asset)src=blobUrl(p.asset);else if(p.type==='model'&&p.asset&&thumbs[p.asset])src=thumbs[p.asset][0];
-      if(src)tex(src,t=>{mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true});
+      if(src)tex(src,t=>{mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true},p.type==='image');
       // drawing sits on its point; a connected drawing slides halfway toward its partner so the two meet
       const s=1/40*2.5*.5,gk=grpOf[find(p.id)].length>1?find(p.id):((p.paths||[]).length?'s'+p.id:null),tgt=gk?(dgs[gk]=dgs[gk]||{g:new THREE.Group(),ids:[],q:place[p.id].q}):null;if(tgt){tgt.ids.push(p.id);if(!tgt.added){tgt.added=1;sc.add(tgt.g)}}
       (p.paths||[]).forEach(d=>{const pts2=sample(d).map(([x,y])=>new THREE.Vector3(x*s,0,y*s));if(pts2.length>1)(tgt?tgt.g:inner).add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2),new THREE.LineBasicMaterial({color:fg})))});
