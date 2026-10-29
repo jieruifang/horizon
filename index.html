@@ -166,7 +166,7 @@ function pe(d,p){return S('path',{d,'clip-path':'url(#dclip)',transform:`transla
 function sm(a){const f=n=>Math.round(n*10)/10;let d=`M${f(a[0][0])} ${f(a[0][1])}`;for(let i=1;i<a.length-1;i++){const m=[(a[i][0]+a[i+1][0])/2,(a[i][1]+a[i+1][1])/2];d+=`Q${f(a[i][0])} ${f(a[i][1])} ${f(m[0])} ${f(m[1])}`}const l=a[a.length-1];return d+`L${f(l[0])} ${f(l[1])}`}
 function finishStroke(){const p=pts[drawId],a=cur;cur=null;if(!p||a.length<2){draw();return}p.paths=(p.paths||[]).concat(sm(a));put('points',pts,p)}
 const R=520;function ring(p){const m=Math.hypot(p.x,p.y);if(m<1){p.x=R;p.y=0}else{p.x*=R/m;p.y*=R/m}}
-function pad(p){
+function pad(p,row){
   const W=240,H=240,s=S('svg',{viewBox:`${-W/2} ${-H/2} ${W} ${H}`,width:'100%',style:'box-sizing:border-box;max-height:200px;border:1px solid var(--line);touch-action:pan-y;display:block;background:var(--bg);cursor:crosshair'});
   
   const gr=S('g',{fill:'none',stroke:'var(--fg)','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});s.append(gr);s.append(S('circle',{r:40,fill:'var(--fg)','fill-opacity':.85,stroke:'none','pointer-events':'none'}));
@@ -176,13 +176,13 @@ function pad(p){
   const pt=e=>{const r=s.getBoundingClientRect();let x=(e.clientX-r.left)/r.width*W-W/2,y=(e.clientY-r.top)/r.height*H-H/2;x=Math.max(-W/2,Math.min(W/2,x));y=Math.max(-H/2,Math.min(H/2,y));return[x,y]};
   // on touch screens the box scrolls with the page until it is tapped, so a swipe doesn't draw
   const touch=matchMedia('(hover:none)').matches;let on=!touch,tap=null;
-  const done=h('button',{style:'margin-top:6px',onclick:()=>set(false)},'Done drawing');
-  const set=v=>{on=v;if(v){started=true;show()};s.style.touchAction=v?'none':'pan-y';s.style.borderColor=v?'var(--fg)':'';done.style.display=touch&&v?'':'none'};set(on);
+  const done=h('button',{onclick:()=>set(false)},'Done'),tip=h('div',{class:'hint',style:'margin:0 0 6px;visibility:hidden'},'Drawing. Tap done to stop and scroll again.');if(touch&&row)row.append(done);
+  const set=v=>{on=v;if(v){started=true;show()};s.style.touchAction=v?'none':'pan-y';s.style.borderColor=v?'var(--fg)':'';done.style.display=touch&&v?'':'none';tip.style.visibility=touch&&v?'visible':'hidden'};set(on);
   s.addEventListener('pointerdown',e=>{if(!on){tap={x:e.clientX,y:e.clientY};return}s.setPointerCapture(e.pointerId);started=true;ph.style.display='none';a=[pt(e)];live=S('path',{});gr.append(live);e.preventDefault()});
   s.addEventListener('pointermove',e=>{if(!a)return;const q=pt(e),l=a[a.length-1];if(Math.hypot(q[0]-l[0],q[1]-l[1])>3){a.push(q);live.setAttribute('d',sm(a))}});
   const end=()=>{if(!a)return;const b=a;a=null;if(b.length<2){show();return}p.paths=(p.paths||[]).concat(sm(b));put('points',pts,p);show()};
   s.addEventListener('pointerup',e=>{if(tap&&!on&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<8)set(true);tap=null;end()});s.addEventListener('pointercancel',()=>{tap=null;end()});
-  return h('div',{},s,done)}
+  return h('div',{},touch?tip:'',s)}
 let fitted=0;function fit(){const r0=svg.getBoundingClientRect();view.k=Math.max(.2,Math.min(r0.width,r0.height)/(2*R+160));view.x=r0.width/2;view.y=r0.height/2;draw();return;const a=Object.values(pts);if(!a.length)return;const r=svg.getBoundingClientRect(),xs=a.map(p=>p.x),ys=a.map(p=>p.y),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),k=Math.max(.3,Math.min(1.5,Math.min(r.width/(x1-x0+300),r.height/(y1-y0+300))));view.k=k;view.x=r.width/2-(x0+x1)/2*k;view.y=r.height/2-(y0+y1)/2*k;draw()}
 $('#fit').onclick=fit;
 $('#map').addEventListener('wheel',e=>{e.preventDefault();zoom(view.k*(e.deltaY<0?1.1:.9),e.clientX,e.clientY)},{passive:false});
@@ -267,7 +267,7 @@ function panel(){
     else el.append(h('div',{class:'hint',style:'margin-top:8px'},'Uploading files needs editor access.'));
     if(p.asset&&p.type==='image')el.append(h('div',{style:'margin-top:8px'},h('img',{src:blobUrl(p.asset)})));
     if(p.asset&&p.type==='model'){const v=h('div',{id:'v3'});el.append(v);setTimeout(()=>view3d(v,blobUrl(p.asset),p.assetName||''),0)}}
-  el.append(h('label',{},'Path'),h('div',{class:'hint'},'Draw its sphere of influence around the dot, which is its circle on the map. Use as many strokes as you like.'),pad(p),h('div',{class:'row',style:'margin-top:6px'},h('button',{onclick:()=>{(p.paths||[]).pop();save();panel()}},'Undo'),h('button',{onclick:()=>{p.paths=[];save();panel()}},'Clear')),h('label',{},'Category'),h('select',{onchange:e=>{p.cat=e.target.value;save();panel()}},catOpt(p.cat)),p.cat==='other'?h('input',{placeholder:'Fill in the blank…',value:p.catOther||'',style:'margin-top:6px',onchange:e=>{p.catOther=e.target.value;save()}}):'',connList(p));
+  el.append(h('label',{},'Path'),h('div',{class:'hint'},'Draw its sphere of influence around the dot, which is its circle on the map. Use as many strokes as you like.'),...(()=>{const r=h('div',{class:'row',style:'margin-top:6px'},h('button',{onclick:()=>{(p.paths||[]).pop();save();panel()}},'Undo'),h('button',{onclick:()=>{p.paths=[];save();panel()}},'Clear'));return[pad(p,r),r]})(),h('label',{},'Category'),h('select',{onchange:e=>{p.cat=e.target.value;save();panel()}},catOpt(p.cat)),p.cat==='other'?h('input',{placeholder:'Fill in the blank…',value:p.catOther||'',style:'margin-top:6px',onchange:e=>{p.catOther=e.target.value;save()}}):'',connList(p));
   {const ts=el.querySelector('select'),fi=el.querySelector('input[type=file]');if(ts&&fi){const row=h('div',{class:'trow'});ts.before(row);if(p.type==='model')row.after(h('div',{class:'hint',style:'margin-top:6px'},'Accepts .ply, .glb or .gltf files.'));fi.style.display='none';const ub=h('button',{class:'up',type:'button',title:p.assetName||'',onclick:()=>fi.click()},p.asset?(p.assetName||'Replace file'):(p.type==='image'?'Upload image':'Upload 3D file'));row.append(ts,ub,fi)}}
   const mine=Object.values(lns).filter(l=>l.a===sel||l.b===sel);
   if(false){el.append(h('label',{},'connections'));mine.forEach(l=>{const o=pts[l.a===sel?l.b:l.a];el.append(h('div',{class:'row',style:'margin:3px 0;align-items:center'},h('span',{style:'flex:1'},'→ '+(o?o.title:'?')),h('button',{onclick:()=>{del('links',lns,l.id);panel()}},'×')))})}
