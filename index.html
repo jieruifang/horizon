@@ -153,14 +153,14 @@ $('#vb').onclick=()=>{const e=$('#vpop');e.style.display=e.style.display==='bloc
 $('#arr').onclick=arrange;$('#conn').onclick=()=>{connMode=!connMode;connFrom=null;if(connMode){sel=null;panel()}draw();connUI()};addEventListener('keydown',e=>{if(e.key==='Escape'&&connMode){connMode=false;connFrom=null;draw();connUI()}});
 let drawId=null,cur=null;function kidsOf(id,seen=new Set([id])){const o=[];for(const q of Object.values(pts))if(q.to===id&&!seen.has(q.id)){seen.add(q.id);o.push(q,...kidsOf(q.id,seen))}return o}
 function wp(e){const r=svg.getBoundingClientRect(),p=pts[drawId];return[(e.clientX-r.left-view.x)/view.k-p.x,(e.clientY-r.top-view.y)/view.k-p.y]}
-function pe(d,p){return S('path',{d,transform:`translate(${p.cx!=null?p.cx:p.x} ${p.cy!=null?p.cy:p.y}) scale(${(p.sc||1.6)/Math.sqrt(view.k)})`,'pointer-events':'none',fill:'none',stroke:'var(--fg)','stroke-width':1.6,'stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'})}
+function pe(d,p){return S('path',{d,transform:`translate(${p.cx!=null?p.cx:p.x} ${p.cy!=null?p.cy:p.y}) scale(${(p.sc||1)/Math.sqrt(view.k)})`,'pointer-events':'none',fill:'none',stroke:'var(--fg)','stroke-width':1.6,'stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'})}
 function sm(a){const f=n=>Math.round(n*10)/10;let d=`M${f(a[0][0])} ${f(a[0][1])}`;for(let i=1;i<a.length-1;i++){const m=[(a[i][0]+a[i+1][0])/2,(a[i][1]+a[i+1][1])/2];d+=`Q${f(a[i][0])} ${f(a[i][1])} ${f(m[0])} ${f(m[1])}`}const l=a[a.length-1];return d+`L${f(l[0])} ${f(l[1])}`}
 function finishStroke(){const p=pts[drawId],a=cur;cur=null;if(!p||a.length<2){draw();return}p.paths=(p.paths||[]).concat(sm(a));put('points',pts,p)}
 const R=520;function ring(p){const m=Math.hypot(p.x,p.y);if(m<1){p.x=R;p.y=0}else{p.x*=R/m;p.y*=R/m}}
 function pad(p){
   const W=240,H=240,s=S('svg',{viewBox:`${-W/2} ${-H/2} ${W} ${H}`,width:'100%',style:'box-sizing:border-box;max-height:200px;border:1px solid var(--line);touch-action:none;display:block;background:var(--bg);cursor:crosshair'});
   
-  const gr=S('g',{fill:'none',stroke:'var(--fg)','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});s.append(gr);s.append(S('circle',{r:40/1.6,fill:'var(--fg)','fill-opacity':.85,stroke:'none','pointer-events':'none'}));
+  const gr=S('g',{fill:'none',stroke:'var(--fg)','stroke-width':1.8,'stroke-linecap':'round','stroke-linejoin':'round'});s.append(gr);s.append(S('circle',{r:40,fill:'var(--fg)','fill-opacity':.85,stroke:'none','pointer-events':'none'}));
   const show=()=>{gr.textContent='';(p.paths||[]).forEach(d=>gr.append(S('path',{d})))};show();
   let a=null,live=null;
   const pt=e=>{const r=s.getBoundingClientRect();return[(e.clientX-r.left)/r.width*W-W/2,(e.clientY-r.top)/r.height*H-H/2]};
@@ -352,7 +352,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
       let src=null;if(p.type==='image'&&p.asset)src=blobUrl(p.asset);else if(p.type==='model'&&p.asset&&thumbs[p.asset])src=thumbs[p.asset][0];
       if(src)tex(src,t=>{mat.map=t;mat.color.set(0xffffff);mat.needsUpdate=true},p.type==='image');
       // drawing sits on its point; a connected drawing slides halfway toward its partner so the two meet
-      const s=1/40*1.6*.5,gm=grpOf[find(p.id)],gHas=gm.some(q=>(q.paths||[]).length),gk=gm.length>1?(gHas?find(p.id):null):((p.paths||[]).length?'s'+p.id:null),tgt=gk?(dgs[gk]=dgs[gk]||{g:new THREE.Group(),ids:[],q:place[p.id].q}):null;if(tgt){tgt.ids.push(p.id);if(!tgt.added){tgt.added=1;sc.add(tgt.g)}}
+      const s=1/40*1*.5,gm=grpOf[find(p.id)],gHas=gm.some(q=>(q.paths||[]).length),gk=gm.length>1?(gHas?find(p.id):null):((p.paths||[]).length?'s'+p.id:null),tgt=gk?(dgs[gk]=dgs[gk]||{g:new THREE.Group(),ids:[],q:place[p.id].q}):null;if(tgt){tgt.ids.push(p.id);if(!tgt.added){tgt.added=1;sc.add(tgt.g)}}
       (p.paths||[]).forEach(d=>{const pts2=sample(d).map(([x,y])=>new THREE.Vector3(x*s,0,y*s));if(pts2.length>1)(tgt?tgt.g:inner).add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts2),new THREE.LineBasicMaterial({color:fg})))});
       disc.userData.gk=gk;disc.userData.id=p.id;const lab=p.title?label(p.title.slice(0,26),fg):null;grp.add(inner);if(lab)grp.add(lab);sc.add(grp);
       const flat=new THREE.Vector3(Math.cos(a0)*R3,0,Math.sin(a0)*R3);
