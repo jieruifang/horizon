@@ -123,19 +123,8 @@ function relayout(ids){const ps=Object.values(pts).filter(p=>p.to&&pts[p.to]&&(!
   ps.forEach(p=>put('points',pts,p));tg.forEach(id=>{if(pts[id]&&!pts[id].to)put('points',pts,pts[id])})}
 function arrange(){
   if(ro)return;const all=Object.values(pts);if(all.length<3)return;
-  const adj={};all.forEach(p=>adj[p.id]=new Set());
-  all.forEach(p=>{[p.to,...(p.links||[])].forEach(t=>{if(t&&pts[t]&&t!==p.id){adj[p.id].add(t);adj[t].add(p.id)}})});
-  const deg=id=>adj[id].size,seen=new Set(),comps=[];
-  all.slice().sort((a,b)=>deg(b.id)-deg(a.id)).forEach(p=>{if(seen.has(p.id))return;const walk=id=>{seen.add(id);const o=[id];[...adj[id]].sort((x,y)=>deg(y)-deg(x)).forEach(n=>{if(!seen.has(n))o.push(...walk(n))});return o};seen.add(p.id);const subs=[...adj[p.id]].sort((x,y)=>deg(y)-deg(x)).filter(n=>!seen.has(n)).map(n=>walk(n));const L=[],Rt=[];subs.forEach((t,i)=>{if(i%2)L.push(t.slice().reverse());else Rt.push(t)});comps.push([...L.flat(),p.id,...Rt.flat()])});
-  comps.sort((a,b)=>b.length-a.length);
-  const order=[],cid=[];comps.forEach((c,i)=>c.forEach(id=>{order.push(id);cid.push(i)}));
-  const n=order.length,w=[];
-  for(let i=0;i<n;i++){const j=(i+1)%n,a=order[i],b=order[j];w.push(adj[a].has(b)?.5:cid[i]===cid[j]?.8:1.5)}
-  // gaps along the circle: connected points sit closest, but never closer than a marker's width
-  const MIN=.26,TAU=Math.PI*2;let gaps=w.map(x=>x);
-  if(n*MIN>=TAU)gaps=w.map(()=>TAU/n);
-  else{const fixed=new Array(n).fill(false);for(let it=0;it<n;it++){let free=0,fs=0;gaps.forEach((g,i)=>{if(!fixed[i]){free+=g;fs++}});const room=TAU-fixed.reduce((t,f)=>t+(f?MIN:0),0);if(!fs)break;const k=room/free;let ch=false;gaps.forEach((g,i)=>{if(fixed[i])return;const v=g*k;if(v<MIN){fixed[i]=true;ch=true}});if(!ch){gaps=gaps.map((g,i)=>fixed[i]?MIN:g*k);break}}
-    const sum=gaps.reduce((x,y)=>x+y,0);gaps=gaps.map(g=>g*TAU/sum)}
+  // spread points evenly, keeping their order around the circle (the spatial layout stays as placed)
+  const order=all.slice().sort((a,b)=>Math.atan2(a.y,a.x)-Math.atan2(b.y,b.x)).map(p=>p.id),n=order.length,TAU=Math.PI*2,gaps=order.map(()=>TAU/n);
   const p0=pts[order[0]],a0=Math.atan2(p0.y,p0.x);let cum=0;
   const ang=order.map((id,i)=>{const v=a0+cum;cum+=gaps[i];return v});
   // nudge points apart until no label or text block sits over another point or label
