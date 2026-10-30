@@ -131,7 +131,14 @@ function arrange(){
   else{const fixed=new Array(n).fill(false);for(let it=0;it<n;it++){let free=0,fs=0;gaps.forEach((g,i)=>{if(!fixed[i]){free+=g;fs++}});const room=TAU-fixed.reduce((t,f)=>t+(f?MIN:0),0);if(!fs)break;const k=room/free;let ch=false;gaps.forEach((g,i)=>{if(fixed[i])return;const v=g*k;if(v<MIN){fixed[i]=true;ch=true}});if(!ch){gaps=gaps.map((g,i)=>fixed[i]?MIN:g*k);break}}
     const sum=gaps.reduce((x,y)=>x+y,0);gaps=gaps.map(g=>g*TAU/sum)}
   const p0=pts[order[0]],a0=Math.atan2(p0.y,p0.x);let cum=0;
-  order.forEach((id,i)=>{const a=a0+cum,p=pts[id];p.x=Math.cos(a)*R;p.y=Math.sin(a)*R;cum+=gaps[i];put('points',pts,p)});relayout()}
+  const ang=order.map((id,i)=>{const v=a0+cum;cum+=gaps[i];return v});
+  // nudge points apart until no label or text block sits over another point or label
+  const sk=1/Math.sqrt(view.k),P=order.map(id=>pts[id]),box=p=>{const tl=p.type==='text'&&p.text?(p.text.replace(/\s+/g,' ').trim().match(/.{1,24}(\s|$)/g)||[]):[],tw=Math.max((p.title||'').slice(0,26).length*7.9,...tl.map(x=>x.trim().length*5.8))+8,r0=p.type==='text'?16:40,bot=tl.length?r0+38+(tl.length-1)*14+6:r0+28;return{tw,r0,bot}},B=P.map(box);
+  const rects=(i,x,y)=>{const b=B[i];return{m:[x-b.r0*sk,y-b.r0*sk,x+b.r0*sk,y+b.r0*sk],t:[x-b.tw/2*sk,y+(b.r0+8)*sk,x+b.tw/2*sk,y+b.bot*sk]}},hit=(u,v)=>u[0]<v[2]&&v[0]<u[2]&&u[1]<v[3]&&v[1]<u[3];
+  for(let it=0;it<500;it++){let moved=false;const R_=ang.map((a,i)=>rects(i,Math.cos(a)*R,Math.sin(a)*R));
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){if(i===j)continue;if(hit(R_[i].t,R_[j].m)||(j>i&&hit(R_[i].t,R_[j].t))){let dlt=Math.atan2(Math.sin(ang[j]-ang[i]),Math.cos(ang[j]-ang[i]));const sg=dlt>=0?1:-1;ang[j]+=sg*.006;ang[i]-=sg*.006;moved=true}}
+    if(!moved)break}
+  order.forEach((id,i)=>{const p=pts[id];p.x=Math.cos(ang[i])*R;p.y=Math.sin(ang[i])*R;put('points',pts,p)});relayout()}
 // versions
 const fmt=t=>new Date(t).toLocaleString([],{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
 function subVers(){db.collection('versions').onSnapshot(s=>{vers=s.docs.map(d=>({...d.data(),id:d.id})).sort((a,b)=>b.ts-a.ts);renderV();bar();
