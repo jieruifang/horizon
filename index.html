@@ -197,7 +197,7 @@ function pad(p,row){
   const end=()=>{if(!a)return;const b=a;a=null;if(b.length<2){show();return}p.paths=(p.paths||[]).concat(sm(b));put('points',pts,p);relayout(new Set([p.id]));show()};
   s.addEventListener('pointerup',e=>{if(tap&&!on&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<8)set(true);tap=null;end()});s.addEventListener('pointercancel',()=>{tap=null;end()});
   return h('div',{},touch?tip:'',s)}
-let fitted=0;function fit(){const r0=svg.getBoundingClientRect(),a=Object.values(pts),PT=52,PB=28,PX=28;
+let fitted=0;function fit(){const r0=svg.getBoundingClientRect(),a=Object.values(pts),PT=44,PB=12,PX=12;
   // size the view so the circle, every marker, its text block and its drawing all fit on screen
   const ext=k=>{const s=1/Math.sqrt(k);let x0=-R,x1=R,y0=-R,y1=R;a.forEach(p=>{const tl=p.type==='text'&&p.text?(p.text.replace(/\s+/g,' ').trim().match(/.{1,24}(\s|$)/g)||[]):[],tw=Math.max((p.title||'').slice(0,26).length*7.9,...tl.map(x=>x.trim().length*5.8))+8,rr=p.type==='text'?16:40,bot=tl.length?rr+38+(tl.length-1)*14+6:rr+28;
       x0=Math.min(x0,p.x-Math.max(rr,tw/2)*s);x1=Math.max(x1,p.x+Math.max(rr,tw/2)*s);y0=Math.min(y0,p.y-rr*s);y1=Math.max(y1,p.y+bot*s);
