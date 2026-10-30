@@ -116,6 +116,7 @@ const isClose=(p,t)=>{const k=1/Math.sqrt(view.k),h=Math.hypot(t.x-p.x,t.y-p.y)/
 const sp0=q=>{const k=1/Math.sqrt(view.k)*(q.sc||1),o=[];(q.paths||[]).forEach(d=>{const n=(d.match(/-?\d+\.?\d*/g)||[]).map(Number);for(let i=0;i+1<n.length;i+=2)o.push([n[i]*k,n[i+1]*k])});return o};
 // drawing of a close point: sits just inward of its marker, its nearest stroke clear of the dot
 const spd=q=>{const k=1/Math.sqrt(view.k)*(q.sc||1),o=[];(q.paths||[]).forEach(d=>{const n=(d.match(/-?\d+\.?\d*/g)||[]).map(Number);for(let i=0;i+1<n.length;i+=2){const x=n[i]*k,y=n[i+1]*k;if(i){const px=n[i-2]*k,py=n[i-1]*k,c=Math.max(1,Math.ceil(Math.hypot(x-px,y-py)/(10/Math.sqrt(view.k))));for(let j=1;j<c;j++)o.push([px+(x-px)*j/c,py+(y-py)*j/c])}o.push([x,y])}});return o};
+const bb=q=>{const P=sp0(q);if(!P.length)return{cx:0,cy:0,hx:0,hy:0};const xs=P.map(p=>p[0]),ys=P.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);return{cx:(x0+x1)/2,cy:(y0+y1)/2,hx:(x1-x0)/2,hy:(y1-y0)/2}};
 const thin=P=>{const n=Math.ceil(P.length/160);return P.filter((_,i)=>i%n===0)};
 const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,k=1/Math.sqrt(view.k),P=thin(spd(a)),need=(R0(a)+22)*k,others=Object.values(pts).filter(o=>o.id!==a.id),
   dr=others.filter(o=>CXY[o.id]&&hasP(o)).map(o=>thin(sp0(o)).map(p=>[CXY[o.id][0]+p[0],CXY[o.id][1]+p[1]])).flat();let best=null;
@@ -139,9 +140,9 @@ function layoutDrawings(){const all=Object.values(pts),inc={};all.forEach(p=>{if
   const k=1/Math.sqrt(view.k),done=new Set();let todo=all.filter(q=>hasP(q)&&HM[q.id]&&pts[HM[q.id]]);
   const place=q=>{const t=pts[HM[q.id]],mutual=hasP(t)&&HM[t.id]===q.id;
     if(isClose(q,t)){CXY[q.id]=near(q,t);done.add(q.id);if(mutual&&!done.has(t.id)){CXY[t.id]=near(t,q);done.add(t.id)}return}
-    if(mutual){const A=q.id<t.id?q:t,B=A===q?t:q,d=Math.hypot(B.x-A.x,B.y-A.y)||1,ux=(B.x-A.x)/d,uy=(B.y-A.y)/d,mx=(A.x+B.x)/2*.9,my=(A.y+B.y)/2*.9,sp=(rd(A)+rd(B))*k*.5/2;CXY[A.id]=[mx-ux*sp,my-uy*sp];CXY[B.id]=[mx+ux*sp,my+uy*sp];done.add(A.id);done.add(B.id);return}
+    if(mutual){const A=q.id<t.id?q:t,B=A===q?t:q,d=Math.hypot(B.x-A.x,B.y-A.y)||1,ux=(B.x-A.x)/d,uy=(B.y-A.y)/d,mx=(A.x+B.x)/2*.9,my=(A.y+B.y)/2*.9,ba=bb(A),bB=bb(B),S=((Math.abs(ux)*ba.hx+Math.abs(uy)*ba.hy)+(Math.abs(ux)*bB.hx+Math.abs(uy)*bB.hy))*.8;CXY[A.id]=[mx-ux*S/2-ba.cx,my-uy*S/2-ba.cy];CXY[B.id]=[mx+ux*S/2-bB.cx,my+uy*S/2-bB.cy];done.add(A.id);done.add(B.id);return}
     // otherwise sit midway to the partner (or to the partner's drawing when that sits on another connector)
-    const an=CXY[t.id]||[t.x,t.y];CXY[q.id]=[(q.x+an[0])/2*.9,(q.y+an[1])/2*.9];done.add(q.id)};
+    const an=CXY[t.id]||[t.x,t.y];{const c=bb(q);CXY[q.id]=[(q.x+an[0])/2*.9-c.cx,(q.y+an[1])/2*.9-c.cy]}done.add(q.id)};
   for(let pass=0;pass<6&&todo.length;pass++){const rest=[];todo.forEach(q=>{if(done.has(q.id))return;const t=pts[HM[q.id]],ready=!hasP(t)||done.has(t.id)||HM[t.id]===q.id||pass===5;if(ready)place(q);else rest.push(q)});todo=rest}}
 function relayout(){}
 function arrange(){
@@ -223,16 +224,16 @@ $('#map').addEventListener('wheel',e=>{e.preventDefault();zoom(view.k*(e.deltaY<
 // draw
 const radW=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((a,v,i,r)=>i%2?a:[...a,Math.hypot(+v,+r[i+1]||0)],[])))*(q.sc||1)/Math.sqrt(view.k);
 // dashed curve between two points; where a point has a drawing the line starts and ends at the drawing's edge
-function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,c=CXY[q.id],u=has&&!!c;return{x:u?c[0]:q.x,y:u?c[1]:q.y,r:has?radW(q):0,u}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
-  let d='';
+function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,c=CXY[q.id],u=has&&!!c,bx=has?bb(q):{cx:0,cy:0},ox=u?c[0]:q.x,oy=u?c[1]:q.y;return{x:ox+(has?bx.cx:0),y:oy+(has?bx.cy:0),ox,oy,r:has?radW(q):0,u,S:has?thin(spd(q)).map(z=>[ox+z[0],oy+z[1]]):[]}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
+  let d='';const gp=10/Math.sqrt(view.k),clr=(Z,x,y)=>!Z.r||Z.S.every(z=>Math.hypot(x-z[0],y-z[1])>gp);
   const cl=(a.r||b.r)&&isClose(p,t);
   // close points: each marker gets a short line out to its own drawing, then the connection runs drawing to drawing
-  if(cl)[[p,a],[t,b]].forEach(([M,Z])=>{if(!Z.u||!Z.r)return;let bp=null,bd=1e9;sp0(M).forEach(q=>{const x=Z.x+q[0],y=Z.y+q[1],dd=Math.hypot(x-M.x,y-M.y);if(dd<bd){bd=dd;bp=[x,y]}});if(bp)W.append(S('path',{d:`M${M.x} ${M.y}L${bp[0]} ${bp[1]}`,...st}))});
+  if(cl)[[p,a],[t,b]].forEach(([M,Z])=>{if(!Z.u||!Z.r)return;let bp=null,bd=1e9;sp0(M).forEach(q=>{const x=Z.ox+q[0],y=Z.oy+q[1],dd=Math.hypot(x-M.x,y-M.y);if(dd<bd){bd=dd;bp=[x,y]}});if(bp)W.append(S('path',{d:`M${M.x} ${M.y}L${bp[0]} ${bp[1]}`,...st}))});
   if(!a.r&&!b.r)d=`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`;else{
     // a drawing that isn't on this connector (the point has several) acts as a hub: the line leaves from its edge
     const cv=(P,T)=>{const Cx=(P.x+T.x)/2*.8,Cy=(P.y+T.y)/2*.8;return f=>{const u=1-f;return[u*u*P.x+2*u*f*Cx+f*f*T.x,u*u*P.y+2*u*f*Cy+f*f*T.y]}};
     const P=a.u&&(cl||HM[p.id]!==t.id)?{x:a.x,y:a.y}:p,T=b.u&&(cl||HM[t.id]!==p.id)?{x:b.x,y:b.y}:t,f=cv(P,T);let on=false;
-    for(let i=0;i<=80;i++){const q=f(i/80),x=q[0],y=q[1];if(Math.hypot(x-a.x,y-a.y)>a.r*.75&&Math.hypot(x-b.x,y-b.y)>b.r*.75){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
+    for(let i=0;i<=80;i++){const q=f(i/80),x=q[0],y=q[1];if(clr(a,x,y)&&clr(b,x,y)){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
   // too little line left between the markers and drawings: bow a plain curve around the drawings instead
   if(a.r+b.r&&!cl){let kept=0;const dd=Math.hypot(t.x-p.x,t.y-p.y);(d.match(/[ML]/g)||[]).forEach(()=>kept++);if(kept*dd/80<40/Math.sqrt(view.k)){const mx=(p.x+t.x)/2,my=(p.y+t.y)/2,dx=t.x-p.x,dy=t.y-p.y,L=Math.hypot(dx,dy)||1;let nx=-dy/L,ny=dx/L;if(nx*mx+ny*my>0){nx=-nx;ny=-ny}const bow=2*(Math.max(a.r,b.r)+14);d=`M${p.x} ${p.y}Q${mx+nx*bow} ${my+ny*bow} ${t.x} ${t.y}`}}
   if(d)W.append(S('path',{d,...st}))}
