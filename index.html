@@ -115,12 +115,15 @@ const isClose=(p,t)=>{const k=1/Math.sqrt(view.k),h=Math.hypot(t.x-p.x,t.y-p.y)/
 // a drawing tucked just inside its own point (used when the two points are too close for it to sit between them)
 const sp0=q=>{const k=1/Math.sqrt(view.k)*(q.sc||1),o=[];(q.paths||[]).forEach(d=>{const n=(d.match(/-?\d+\.?\d*/g)||[]).map(Number);for(let i=0;i+1<n.length;i+=2)o.push([n[i]*k,n[i+1]*k])});return o};
 // drawing of a close point: sits just inward of its marker, its nearest stroke clear of the dot
-const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,k=1/Math.sqrt(view.k),P=sp0(a),need=(R0(a)+8)*k,others=Object.values(pts).filter(o=>o.id!==a.id),bx=a.x+(b.x-a.x)*.4,by=a.y+(b.y-a.y)*.4,a0=Math.atan2(-by,-bx);let best=null;
-  // the drawing stays inside the circle and clear of every other marker; try small turns off the inward direction if needed
-  for(const da of [0,.25,-.25,.5,-.5,.8,-.8,1.1,-1.1]){const ux=Math.cos(a0+da),uy=Math.sin(a0+da);
-    for(let D=0;D<900*k;D+=3*k){const cx=bx+ux*D,cy=by+uy*D;
-      if(P.every(p=>{const x=cx+p[0],y=cy+p[1];return Math.hypot(x-a.x,y-a.y)>=need&&Math.hypot(x,y)<=R-4*k&&others.every(o=>Math.hypot(x-o.x,y-o.y)>=(R0(o)+6)*k)})){if(!best||D<best.D)best={D,c:[cx,cy]};break}}
-    if(best&&da===0)break}
+const thin=P=>{const n=Math.ceil(P.length/40);return P.filter((_,i)=>i%n===0)};
+const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,k=1/Math.sqrt(view.k),P=thin(sp0(a)),need=(R0(a)+30)*k,others=Object.values(pts).filter(o=>o.id!==a.id),
+  dr=others.filter(o=>CXY[o.id]&&hasP(o)).map(o=>thin(sp0(o)).map(p=>[CXY[o.id][0]+p[0],CXY[o.id][1]+p[1]])).flat();let best=null;
+  // the drawing stays inside the circle, clear of every marker, label and other drawing, and far enough from its dot to show a line to it
+  const okAt=(cx,cy)=>P.every(p=>{const x=cx+p[0],y=cy+p[1];return Math.hypot(x-a.x,y-a.y)>=need&&Math.hypot(x,y)<=R-4*k&&others.every(o=>Math.hypot(x-o.x,y-o.y)>=(R0(o)+8)*k&&!(Math.abs(x-o.x)<(((o.title||'').length*4.2)+6)*k&&y>o.y+R0(o)*k&&y<o.y+(R0(o)+34)*k))&&dr.every(q=>Math.hypot(x-q[0],y-q[1])>=12*k)});
+  for(const f of [.4,.25,.55,.1]){const bx=a.x+(b.x-a.x)*f,by=a.y+(b.y-a.y)*f,a0=Math.atan2(-by,-bx);
+    for(const da of [0,.3,-.3,.6,-.6,.9,-.9,1.2,-1.2]){const ux=Math.cos(a0+da),uy=Math.sin(a0+da);
+      for(let D=0;D<900*k;D+=4*k){if(okAt(bx+ux*D,by+uy*D)){if(!best||D<best.D)best={D,c:[bx+ux*D,by+uy*D]};break}}}
+    if(best)break}
   if(best)return best.c;const ux=-a.x/m,uy=-a.y/m;return[a.x+ux*(R0(a)+rd(a)+14)*k,a.y+uy*(R0(a)+rd(a)+14)*k]};
 let HM={},CXY={};
 // where each drawing sits is derived on every draw, never stored
