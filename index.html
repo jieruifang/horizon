@@ -111,19 +111,20 @@ const R0=q=>q.type==='text'?16:40,rd=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(
 const isClose=(p,t)=>{const k=1/Math.sqrt(view.k),h=Math.hypot(t.x-p.x,t.y-p.y)/2,ra=hasP(p)?rd(p)*k:0,rb=hasP(t)?rd(t)*k:0,sp=(ra+rb)*.8/2;return(hasP(p)&&h-sp-ra<R0(p)*k+6)||(hasP(t)&&h-sp-rb<R0(t)*k+6)};
 // a drawing tucked just inside its own point (used when the two points are too close for it to sit between them)
 const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,D=(R0(a)+rd(a)+14)/Math.sqrt(view.k);return[a.x-a.x/m*D,a.y-a.y/m*D]};
-let HM={};
-function relayout(){const all=Object.values(pts),inc={},before={};all.forEach(p=>{if(p.to&&pts[p.to])(inc[p.to]=inc[p.to]||[]).push(p.id)});
+let HM={},CXY={};
+// where each drawing sits is derived on every draw, never stored
+function layoutDrawings(){const all=Object.values(pts),inc={};all.forEach(p=>{if(p.to&&pts[p.to])(inc[p.to]=inc[p.to]||[]).push(p.id)});
   // each drawing has one home connector: its own outgoing one, else the first incoming, else a link
   const home=q=>q.to&&pts[q.to]?q.to:(inc[q.id]?inc[q.id].slice().sort()[0]:null)||(q.links||[]).find(x=>pts[x])||(all.find(o=>(o.links||[]).includes(q.id))||{}).id||null;
-  HM={};all.forEach(q=>{HM[q.id]=home(q);before[q.id]=[q.cx,q.cy];delete q.cx;delete q.cy});
+  HM={};CXY={};all.forEach(q=>{HM[q.id]=home(q)});
   const k=1/Math.sqrt(view.k),done=new Set();let todo=all.filter(q=>hasP(q)&&HM[q.id]&&pts[HM[q.id]]);
   const place=q=>{const t=pts[HM[q.id]],mutual=hasP(t)&&HM[t.id]===q.id;
-    if(isClose(q,t)){let c=near(q,t);q.cx=c[0];q.cy=c[1];done.add(q.id);if(mutual&&!done.has(t.id)){c=near(t,q);t.cx=c[0];t.cy=c[1];done.add(t.id)}return}
-    if(mutual){const A=q.id<t.id?q:t,B=A===q?t:q,d=Math.hypot(B.x-A.x,B.y-A.y)||1,ux=(B.x-A.x)/d,uy=(B.y-A.y)/d,mx=(A.x+B.x)/2*.9,my=(A.y+B.y)/2*.9,sp=(rd(A)+rd(B))*k*.8/2;A.cx=mx-ux*sp;A.cy=my-uy*sp;B.cx=mx+ux*sp;B.cy=my+uy*sp;done.add(A.id);done.add(B.id);return}
+    if(isClose(q,t)){CXY[q.id]=near(q,t);done.add(q.id);if(mutual&&!done.has(t.id)){CXY[t.id]=near(t,q);done.add(t.id)}return}
+    if(mutual){const A=q.id<t.id?q:t,B=A===q?t:q,d=Math.hypot(B.x-A.x,B.y-A.y)||1,ux=(B.x-A.x)/d,uy=(B.y-A.y)/d,mx=(A.x+B.x)/2*.9,my=(A.y+B.y)/2*.9,sp=(rd(A)+rd(B))*k*.8/2;CXY[A.id]=[mx-ux*sp,my-uy*sp];CXY[B.id]=[mx+ux*sp,my+uy*sp];done.add(A.id);done.add(B.id);return}
     // otherwise sit midway to the partner (or to the partner's drawing when that sits on another connector)
-    const ax=t.cx!=null?t.cx:t.x,ay=t.cx!=null?t.cy:t.y;q.cx=(q.x+ax)/2*.9;q.cy=(q.y+ay)/2*.9;done.add(q.id)};
-  for(let pass=0;pass<6&&todo.length;pass++){const rest=[];todo.forEach(q=>{if(done.has(q.id))return;const t=pts[HM[q.id]],ready=!hasP(t)||done.has(t.id)||HM[t.id]===q.id||pass===5;if(ready)place(q);else rest.push(q)});todo=rest}
-  all.forEach(q=>{const b=before[q.id];if(b[0]!==q.cx||b[1]!==q.cy)put('points',pts,q)})}
+    const an=CXY[t.id]||[t.x,t.y];CXY[q.id]=[(q.x+an[0])/2*.9,(q.y+an[1])/2*.9];done.add(q.id)};
+  for(let pass=0;pass<6&&todo.length;pass++){const rest=[];todo.forEach(q=>{if(done.has(q.id))return;const t=pts[HM[q.id]],ready=!hasP(t)||done.has(t.id)||HM[t.id]===q.id||pass===5;if(ready)place(q);else rest.push(q)});todo=rest}}
+function relayout(){}
 function arrange(){
   if(ro)return;const all=Object.values(pts);if(all.length<3)return;
   // spread points evenly, keeping their order around the circle (the spatial layout stays as placed)
@@ -168,7 +169,7 @@ $('#vb').onclick=()=>{const e=$('#vpop');e.style.display=e.style.display==='bloc
 $('#arr').onclick=arrange;$('#conn').onclick=()=>{connMode=!connMode;connFrom=null;if(connMode){sel=null;panel()}draw();connUI()};addEventListener('keydown',e=>{if(e.key==='Escape'&&connMode){connMode=false;connFrom=null;draw();connUI()}});
 let drawId=null,cur=null;function kidsOf(id,seen=new Set([id])){const o=[];for(const q of Object.values(pts))if(q.to===id&&!seen.has(q.id)){seen.add(q.id);o.push(q,...kidsOf(q.id,seen))}return o}
 function wp(e){const r=svg.getBoundingClientRect(),p=pts[drawId];return[(e.clientX-r.left-view.x)/view.k-p.x,(e.clientY-r.top-view.y)/view.k-p.y]}
-let CS=new Set();function pe(d,p){const uc=p.cx!=null&&CS.has(p.id);return S('path',{d,'clip-path':'url(#dclip)',transform:`translate(${uc?p.cx:p.x} ${uc?p.cy:p.y}) scale(${(p.sc||1)/Math.sqrt(view.k)})`,'pointer-events':'none',fill:'none',stroke:'var(--fg)','stroke-width':1.6,'stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'})}
+let CS=new Set();function pe(d,p){const c=CXY[p.id]||[p.x,p.y];return S('path',{d,'clip-path':'url(#dclip)',transform:`translate(${c[0]} ${c[1]}) scale(${(p.sc||1)/Math.sqrt(view.k)})`,'pointer-events':'none',fill:'none',stroke:'var(--fg)','stroke-width':1.6,'stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'})}
 function sm(a){const f=n=>Math.round(n*10)/10;let d=`M${f(a[0][0])} ${f(a[0][1])}`;for(let i=1;i<a.length-1;i++){const m=[(a[i][0]+a[i+1][0])/2,(a[i][1]+a[i+1][1])/2];d+=`Q${f(a[i][0])} ${f(a[i][1])} ${f(m[0])} ${f(m[1])}`}const l=a[a.length-1];return d+`L${f(l[0])} ${f(l[1])}`}
 function finishStroke(){const p=pts[drawId],a=cur;cur=null;if(!p||a.length<2){draw();return}p.paths=(p.paths||[]).concat(sm(a));put('points',pts,p)}
 const R=520;function ring(p){const m=Math.hypot(p.x,p.y);if(m<1){p.x=R;p.y=0}else{p.x*=R/m;p.y*=R/m}}
@@ -193,7 +194,7 @@ let fitted=0;function fit(){const r0=svg.getBoundingClientRect(),a=Object.values
   // size the view so the circle, every marker, its text block and its drawing all fit on screen
   const ext=k=>{const s=1/Math.sqrt(k);let x0=-R,x1=R,y0=-R,y1=R;a.forEach(p=>{const tl=p.type==='text'&&p.text?(p.text.replace(/\s+/g,' ').trim().match(/.{1,24}(\s|$)/g)||[]):[],tw=Math.max((p.title||'').slice(0,26).length*7.9,...tl.map(x=>x.trim().length*5.8))+8,rr=p.type==='text'?16:40,bot=tl.length?rr+38+(tl.length-1)*14+6:rr+28;
       x0=Math.min(x0,p.x-Math.max(rr,tw/2)*s);x1=Math.max(x1,p.x+Math.max(rr,tw/2)*s);y0=Math.min(y0,p.y-rr*s);y1=Math.max(y1,p.y+bot*s);
-      if((p.paths||[]).length){const c=p.cx!=null?[p.cx,p.cy]:[p.x,p.y],rad=Math.max(0,...(p.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((q,v,i,r)=>i%2?q:[...q,Math.hypot(+v,+r[i+1]||0)],[])))*(p.sc||1)*s;x0=Math.min(x0,c[0]-rad);x1=Math.max(x1,c[0]+rad);y0=Math.min(y0,c[1]-rad);y1=Math.max(y1,c[1]+rad)}});return[x0,y0,x1,y1]};
+      if((p.paths||[]).length){const c=CXY[p.id]||[p.x,p.y],rad=Math.max(0,...(p.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((q,v,i,r)=>i%2?q:[...q,Math.hypot(+v,+r[i+1]||0)],[])))*(p.sc||1)*s;x0=Math.min(x0,c[0]-rad);x1=Math.max(x1,c[0]+rad);y0=Math.min(y0,c[1]-rad);y1=Math.max(y1,c[1]+rad)}});return[x0,y0,x1,y1]};
   let k=Math.max(.1,Math.min(r0.width,r0.height)/(2*R+160)),b=ext(k);
   for(let i=0;i<25;i++){b=ext(k);const nk=Math.max(.1,Math.min(2,Math.min((r0.width-2*PX)/(b[2]-b[0]),(r0.height-PT-PB)/(b[3]-b[1]))));if(Math.abs(nk-k)<.0005){k=nk;break}k=nk}
   b=ext(k);view.k=k;view.x=r0.width/2-(b[0]+b[2])/2*k;view.y=PT+(r0.height-PT-PB)/2-(b[1]+b[3])/2*k;draw()}
@@ -202,7 +203,7 @@ $('#map').addEventListener('wheel',e=>{e.preventDefault();zoom(view.k*(e.deltaY<
 // draw
 const radW=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((a,v,i,r)=>i%2?a:[...a,Math.hypot(+v,+r[i+1]||0)],[])))*(q.sc||1)/Math.sqrt(view.k);
 // dashed curve between two points; where a point has a drawing the line starts and ends at the drawing's edge
-function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,u=has&&q.cx!=null&&CS.has(q.id);return{x:u?q.cx:q.x,y:u?q.cy:q.y,r:has?radW(q):0,u}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
+function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,c=CXY[q.id],u=has&&!!c;return{x:u?c[0]:q.x,y:u?c[1]:q.y,r:has?radW(q):0,u}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
   let d='';
   if((a.r||b.r)&&isClose(p,t)){W.append(S('path',{d:`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`,...st}));return}
   if(!a.r&&!b.r)d=`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`;else{
@@ -214,7 +215,7 @@ function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,u=ha
   if(a.r+b.r){let kept=0;const dd=Math.hypot(t.x-p.x,t.y-p.y);(d.match(/[ML]/g)||[]).forEach(()=>kept++);if(kept*dd/80<40/Math.sqrt(view.k)){const mx=(p.x+t.x)/2,my=(p.y+t.y)/2,dx=t.x-p.x,dy=t.y-p.y,L=Math.hypot(dx,dy)||1;let nx=-dy/L,ny=dx/L;if(nx*mx+ny*my>0){nx=-nx;ny=-ny}const bow=2*(Math.max(a.r,b.r)+14);d=`M${p.x} ${p.y}Q${mx+nx*bow} ${my+ny*bow} ${t.x} ${t.y}`}}
   if(d)W.append(S('path',{d,...st}))}
 function draw(){
-  const W=$('#w');W.textContent='';CS=new Set();Object.values(pts).forEach(q=>{[q.to,...(q.links||[])].forEach(x=>{if(x&&pts[x]){CS.add(q.id);CS.add(x)}})});
+  const W=$('#w');W.textContent='';layoutDrawings();
   W.append(S('circle',{r:R,fill:'none',stroke:'var(--line)','stroke-width':1,'vector-effect':'non-scaling-stroke'}));
   for(const id in {}){const l=lns[id],a=pts[l.a],b=pts[l.b];if(!a||!b)continue;const dx=b.x-a.x,dy=b.y-a.y;
     W.append(S('path',{d:`M${a.x} ${a.y}Q${(a.x+b.x)/2-dy*.18} ${(a.y+b.y)/2+dx*.18} ${b.x} ${b.y}`,fill:'none',stroke:'var(--fg)','stroke-width':1.8,'vector-effect':'non-scaling-stroke'}))}
@@ -228,7 +229,7 @@ function draw(){
     else if(p.type==='model'){thumb(p);g.append(S('polygon',{points:'0,-14 12,-7 12,7 0,14 -12,7 -12,-7',fill:'none',stroke:'var(--fg)','vector-effect':'non-scaling-stroke'}),S('path',{d:'M0 0V14M0 0L12-7M0 0L-12-7',stroke:'var(--fg)',fill:'none','vector-effect':'non-scaling-stroke'}))}
     else g.append(S('circle',{r:5,fill:'var(--fg)'}));
     if(!ro&&!connMode){const hg=S('g',{class:'hnd-g','data-conn':id,style:'cursor:crosshair'});hg.append(S('circle',{cx:r0*.72,cy:-r0*.72,r:9,fill:'var(--bg)',stroke:'var(--fg)','stroke-width':1.4,'vector-effect':'non-scaling-stroke'}),S('path',{d:`M${r0*.72-4} ${-r0*.72}H${r0*.72+4}M${r0*.72} ${-r0*.72-4}V${-r0*.72+4}`,stroke:'var(--fg)','stroke-width':1.4,fill:'none','vector-effect':'non-scaling-stroke'}));g.append(hg)}
-    const lg=S('g',{transform:g.getAttribute('transform'),'pointer-events':'none'}),tl=p.type==='text'&&p.text?(p.text.replace(/\s+/g,' ').trim().match(/.{1,24}(\s|$)/g)||[]):[],tw=Math.max((p.title||'').slice(0,26).length*7.9,...tl.map(x=>x.trim().length*5.8)),bk=S('rect',{x:-tw/2-4,y:r0+8,width:tw+8,height:(tl.length?r0+38+(tl.length-1)*14+6:r0+22+6)-(r0+8),fill:'var(--bg)','pointer-events':'none'});lg.append(bk);const t=S('text',{y:r0+22,'text-anchor':'middle','font-size':13,fill:'var(--fg)'});t.textContent=(p.title||'').slice(0,26);lg.append(t);if(tl.length){const w=tl;w.forEach((s,i)=>{const u=S('text',{y:r0+38+i*14,'text-anchor':'middle','font-size':12,'font-family':'Newsreader,Georgia,serif','font-style':'italic',fill:'var(--dim)'});u.textContent=s.trim();lg.append(u)})}mk.push(g);lb.push(lg)}for(const id in pts){const p=pts[id];{const t=p.to&&pts[p.to];if(t){{connector(W,p,t,id===sel||p.to===sel||(sel&&pts[sel]&&pts[sel].to===id))}}}(p.paths||[]).forEach(d=>{W.append(pe(d,p));const h2=pe(d,p);h2.setAttribute('stroke','transparent');h2.setAttribute('stroke-width',18);h2.setAttribute('pointer-events','stroke');h2.setAttribute('data-draw',id);h2.style.cursor='move';if(CS.has(id))W.append(h2)})}
+    const lg=S('g',{transform:g.getAttribute('transform'),'pointer-events':'none'}),tl=p.type==='text'&&p.text?(p.text.replace(/\s+/g,' ').trim().match(/.{1,24}(\s|$)/g)||[]):[],tw=Math.max((p.title||'').slice(0,26).length*7.9,...tl.map(x=>x.trim().length*5.8)),bk=S('rect',{x:-tw/2-4,y:r0+8,width:tw+8,height:(tl.length?r0+38+(tl.length-1)*14+6:r0+22+6)-(r0+8),fill:'var(--bg)','pointer-events':'none'});lg.append(bk);const t=S('text',{y:r0+22,'text-anchor':'middle','font-size':13,fill:'var(--fg)'});t.textContent=(p.title||'').slice(0,26);lg.append(t);if(tl.length){const w=tl;w.forEach((s,i)=>{const u=S('text',{y:r0+38+i*14,'text-anchor':'middle','font-size':12,'font-family':'Newsreader,Georgia,serif','font-style':'italic',fill:'var(--dim)'});u.textContent=s.trim();lg.append(u)})}mk.push(g);lb.push(lg)}for(const id in pts){const p=pts[id];{const t=p.to&&pts[p.to];if(t){{connector(W,p,t,id===sel||p.to===sel||(sel&&pts[sel]&&pts[sel].to===id))}}}(p.paths||[]).forEach(d=>W.append(pe(d,p)))}
   if(cd&&pts[cd.from]&&cd.pt){const f=pts[cd.from],to=cd.over&&pts[cd.over]?[pts[cd.over].x,pts[cd.over].y]:cd.pt;W.append(S('line',{x1:f.x,y1:f.y,x2:to[0],y2:to[1],stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round','vector-effect':'non-scaling-stroke','pointer-events':'none'}))}
   Object.values(pts).forEach(p=>(p.links||[]).forEach(t=>{const q=pts[t];if(!q)return;connector(W,p,q,p.id===sel||t===sel)}));
   lb.forEach(g=>W.append(g));mk.forEach(g=>W.append(g));
