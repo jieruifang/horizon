@@ -197,7 +197,14 @@ function pad(p,row){
   const end=()=>{if(!a)return;const b=a;a=null;if(b.length<2){show();return}p.paths=(p.paths||[]).concat(sm(b));put('points',pts,p);relayout(new Set([p.id]));show()};
   s.addEventListener('pointerup',e=>{if(tap&&!on&&Math.hypot(e.clientX-tap.x,e.clientY-tap.y)<8)set(true);tap=null;end()});s.addEventListener('pointercancel',()=>{tap=null;end()});
   return h('div',{},touch?tip:'',s)}
-let fitted=0;function fit(){const r0=svg.getBoundingClientRect();view.k=Math.max(.2,Math.min(r0.width,r0.height)/(2*R+160));view.x=r0.width/2;view.y=r0.height/2;draw();return;const a=Object.values(pts);if(!a.length)return;const r=svg.getBoundingClientRect(),xs=a.map(p=>p.x),ys=a.map(p=>p.y),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),k=Math.max(.3,Math.min(1.5,Math.min(r.width/(x1-x0+300),r.height/(y1-y0+300))));view.k=k;view.x=r.width/2-(x0+x1)/2*k;view.y=r.height/2-(y0+y1)/2*k;draw()}
+let fitted=0;function fit(){const r0=svg.getBoundingClientRect(),a=Object.values(pts),PT=52,PB=28,PX=28;
+  // size the view so the circle, every marker, its text block and its drawing all fit on screen
+  const ext=k=>{const s=1/Math.sqrt(k);let x0=-R,x1=R,y0=-R,y1=R;a.forEach(p=>{const tl=p.type==='text'&&p.text?(p.text.replace(/\s+/g,' ').trim().match(/.{1,24}(\s|$)/g)||[]):[],tw=Math.max((p.title||'').slice(0,26).length*7.9,...tl.map(x=>x.trim().length*5.8))+8,rr=p.type==='text'?16:40,bot=tl.length?rr+38+(tl.length-1)*14+6:rr+28;
+      x0=Math.min(x0,p.x-Math.max(rr,tw/2)*s);x1=Math.max(x1,p.x+Math.max(rr,tw/2)*s);y0=Math.min(y0,p.y-rr*s);y1=Math.max(y1,p.y+bot*s);
+      if((p.paths||[]).length){const c=p.cx!=null?[p.cx,p.cy]:[p.x,p.y],rad=Math.max(0,...(p.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((q,v,i,r)=>i%2?q:[...q,Math.hypot(+v,+r[i+1]||0)],[])))*(p.sc||1)*s;x0=Math.min(x0,c[0]-rad);x1=Math.max(x1,c[0]+rad);y0=Math.min(y0,c[1]-rad);y1=Math.max(y1,c[1]+rad)}});return[x0,y0,x1,y1]};
+  let k=Math.max(.1,Math.min(r0.width,r0.height)/(2*R+160)),b=ext(k);
+  for(let i=0;i<25;i++){b=ext(k);const nk=Math.max(.1,Math.min(2,Math.min((r0.width-2*PX)/(b[2]-b[0]),(r0.height-PT-PB)/(b[3]-b[1]))));if(Math.abs(nk-k)<.0005){k=nk;break}k=nk}
+  b=ext(k);view.k=k;view.x=r0.width/2-(b[0]+b[2])/2*k;view.y=PT+(r0.height-PT-PB)/2-(b[1]+b[3])/2*k;draw()}
 $('#fit').onclick=fit;
 $('#map').addEventListener('wheel',e=>{e.preventDefault();zoom(view.k*(e.deltaY<0?1.1:.9),e.clientX,e.clientY)},{passive:false});
 // draw
