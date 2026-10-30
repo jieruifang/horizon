@@ -255,7 +255,7 @@ function up(e){P.delete(e.pointerId);if(cd){const c=cd;cd=null;svg.style.cursor=
   if(d.moved){if(d.dw){put('points',pts,pts[d.dw]);d.kids.forEach(k=>{if(pts[k.id])put('points',pts,pts[k.id])})}else if(d.id){put('points',pts,pts[d.id]);relayout(new Set([d.id]))}}else click(d.id||d.dw)}
 svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
 let connMode=false;
-function applyConnect(p,t){if(p.id===t.id||p.to===t.id||t.to===p.id||(p.links||[]).includes(t.id)||(t.links||[]).includes(p.id))return;if(p.to&&pts[p.to]){(p.links=p.links||[]).push(t.id);put('points',pts,p);relayout();return}p.to=t.id;relayout(new Set([p.id]))}
+function applyConnect(p,t){if(p.id===t.id||p.to===t.id||t.to===p.id||(p.links||[]).includes(t.id)||(t.links||[]).includes(p.id))return;if(p.to&&pts[p.to]){(p.links=p.links||[]).push(t.id);put('points',pts,p);return}p.to=t.id;put('points',pts,p)}
 function connList(p){
   const rows=[];if(p.to&&pts[p.to])rows.push({o:pts[p.to],rel:()=>{delete p.cx;delete p.cy;delete p.to;put('points',pts,p);panel()}});
   (p.links||[]).forEach(t=>{if(pts[t])rows.push({o:pts[t],rel:()=>{p.links=p.links.filter(x=>x!==t);put('points',pts,p);panel()}})});
