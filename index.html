@@ -131,7 +131,7 @@ const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,k=1/Math.sqrt(view.k),P=thin(s
     let g0=gap(c);for(let i=0;i<150&&g0>3*k;i++){const n=[c[0]+tx/tl*3*k,c[1]+ty/tl*3*k],g1=gap(n);if(!okAt(n[0],n[1])||g1>g0+k)break;c=n;g0=g1}
     best={c}}
   if(best)return best.c;const ux=-a.x/m,uy=-a.y/m;return[a.x+ux*(R0(a)+rd(a)+14)*k,a.y+uy*(R0(a)+rd(a)+14)*k]};
-let HM={},CXY={};
+let HM={},CXY={},DRS=[];
 // where each drawing sits is derived on every draw, never stored
 function layoutDrawings(){const all=Object.values(pts),inc={};all.forEach(p=>{if(p.to&&pts[p.to])(inc[p.to]=inc[p.to]||[]).push(p.id)});
   // each drawing has one home connector: its own outgoing one, else the first incoming, else a link
@@ -143,7 +143,8 @@ function layoutDrawings(){const all=Object.values(pts),inc={};all.forEach(p=>{if
     if(mutual){const A=q.id<t.id?q:t,B=A===q?t:q,d=Math.hypot(B.x-A.x,B.y-A.y)||1,ux=(B.x-A.x)/d,uy=(B.y-A.y)/d,mx=(A.x+B.x)/2*.9,my=(A.y+B.y)/2*.9,ba=bb(A),bB=bb(B),S=((Math.abs(ux)*ba.hx+Math.abs(uy)*ba.hy)+(Math.abs(ux)*bB.hx+Math.abs(uy)*bB.hy))*.8;CXY[A.id]=[mx-ux*S/2-ba.cx,my-uy*S/2-ba.cy];CXY[B.id]=[mx+ux*S/2-bB.cx,my+uy*S/2-bB.cy];done.add(A.id);done.add(B.id);return}
     // otherwise sit midway to the partner (or to the partner's drawing when that sits on another connector)
     const an=CXY[t.id]||[t.x,t.y];{const c=bb(q);CXY[q.id]=[(q.x+an[0])/2*.9-c.cx,(q.y+an[1])/2*.9-c.cy]}done.add(q.id)};
-  for(let pass=0;pass<6&&todo.length;pass++){const rest=[];todo.forEach(q=>{if(done.has(q.id))return;const t=pts[HM[q.id]],ready=!hasP(t)||done.has(t.id)||HM[t.id]===q.id||pass===5;if(ready)place(q);else rest.push(q)});todo=rest}}
+  for(let pass=0;pass<6&&todo.length;pass++){const rest=[];todo.forEach(q=>{if(done.has(q.id))return;const t=pts[HM[q.id]],ready=!hasP(t)||done.has(t.id)||HM[t.id]===q.id||pass===5;if(ready)place(q);else rest.push(q)});todo=rest}
+  DRS=[];all.forEach(q=>{if(!hasP(q))return;const c=CXY[q.id]||[q.x,q.y];thin(spd(q)).forEach(z=>DRS.push([c[0]+z[0],c[1]+z[1]]))})}
 function relayout(){}
 function arrange(){
   if(ro)return;const all=Object.values(pts);if(all.length<3)return;
@@ -232,7 +233,10 @@ function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,c=CX
   if(cl&&a.r&&b.r){ // both drawings: one short link between their nearest strokes, and none when they already touch
     let g=1e9,u=null,v=null;a.S.forEach(z=>b.S.forEach(w=>{const q=Math.hypot(z[0]-w[0],z[1]-w[1]);if(q<g){g=q;u=z;v=w}}));
     if(u&&g>14/Math.sqrt(view.k))W.append(S('path',{d:`M${u[0]} ${u[1]}L${v[0]} ${v[1]}`,...st}));return}
-  if(!a.r&&!b.r)d=`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`;else{
+  if(!a.r&&!b.r){ // a plain line bends away from any drawing it would run through, so it can't be mistaken for connecting to it
+    const kk=1/Math.sqrt(view.k),mx=(p.x+t.x)/2,my=(p.y+t.y)/2,L=Math.hypot(t.x-p.x,t.y-p.y)||1,nx=-(t.y-p.y)/L,ny=(t.x-p.x)/L,hit=C=>{for(let i=1;i<40;i++){const f=i/40,u=1-f,x=u*u*p.x+2*u*f*C[0]+f*f*t.x,y=u*u*p.y+2*u*f*C[1]+f*f*t.y;if(DRS.some(z=>Math.hypot(x-z[0],y-z[1])<16*kk))return true}return false};
+    let C=[mx*.8,my*.8];if(hit(C))for(const o of [60,-60,120,-120,200,-200,300,-300]){const c2=[mx*.8+nx*o*kk,my*.8+ny*o*kk];if(!hit(c2)){C=c2;break}}
+    d=`M${p.x} ${p.y}Q${C[0]} ${C[1]} ${t.x} ${t.y}`}else{
     // a drawing that isn't on this connector (the point has several) acts as a hub: the line leaves from its edge
     const cv=(P,T)=>{const Cx=(P.x+T.x)/2*.8,Cy=(P.y+T.y)/2*.8;return f=>{const u=1-f;return[u*u*P.x+2*u*f*Cx+f*f*T.x,u*u*P.y+2*u*f*Cy+f*f*T.y]}};
     const P=a.u&&(cl||HM[p.id]!==t.id)?{x:a.x,y:a.y}:p,T=b.u&&(cl||HM[t.id]!==p.id)?{x:b.x,y:b.y}:t,f=cv(P,T);let on=false;
