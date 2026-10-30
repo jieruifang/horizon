@@ -108,11 +108,10 @@ function center(){const r=$('#map').getBoundingClientRect();return[(r.width/2-vi
 // re-place the drawings of connected points so they meet midway (after points move)
 function relayout(ids){const ps=Object.values(pts).filter(p=>p.to&&pts[p.to]&&(!ids||ids.has(p.id)||ids.has(p.to))),tg=new Set(ps.map(p=>p.to)),has=q=>(q.paths||[]).length>0,done=new Set();
   ps.forEach(p=>{delete p.cx;delete p.cy});tg.forEach(id=>{const q=pts[id];if(q&&!q.to){delete q.cx;delete q.cy}});
-  // drawings sit at the ends of the connector and meet in the middle
-  ps.forEach(p=>{const t=pts[p.to],mx=(p.x+t.x)/2*.9,my=(p.y+t.y)/2*.9,dx=p.x-t.x,dy=p.y-t.y,d=Math.hypot(dx,dy)||1,ux=dx/d,uy=dy/d,o=Math.min(30,d/4);
-    if(has(p)&&has(t)){if(t.cx!=null){p.cx=t.cx+ux*60;p.cy=t.cy+uy*60}else{p.cx=mx+ux*o;p.cy=my+uy*o;if(!t.to){t.cx=mx-ux*o;t.cy=my-uy*o}}}
-    else if(has(p)){p.cx=mx;p.cy=my}
-    else if(has(t)&&t.cx==null&&!t.to){t.cx=mx;t.cy=my}});
+  // each drawing sits on the curve right beside its own point
+  const R0=q=>q.type==='text'?16:40,rd=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((a,v,i,r)=>i%2?a:[...a,Math.hypot(+v,+r[i+1]||0)],[])))*(q.sc||1);
+  const near=(a,b)=>{const d=Math.hypot(b.x-a.x,b.y-a.y)||1,D=Math.min((R0(a)+rd(a)+14)/Math.sqrt(view.k),d*.45),Cx=(a.x+b.x)/2*.8,Cy=(a.y+b.y)/2*.8;let best=[a.x,a.y];for(let i=1;i<=100;i++){const f=i/100,u=1-f,x=u*u*a.x+2*u*f*Cx+f*f*b.x,y=u*u*a.y+2*u*f*Cy+f*f*b.y;best=[x,y];if(Math.hypot(x-a.x,y-a.y)>=D)break}return best};
+  ps.forEach(p=>{const t=pts[p.to];if(has(p)){const c=near(p,t);p.cx=c[0];p.cy=c[1]}if(has(t)&&t.cx==null&&!t.to){const c=near(t,p);t.cx=c[0];t.cy=c[1]}});
   ps.forEach(p=>put('points',pts,p));tg.forEach(id=>{if(pts[id]&&!pts[id].to)put('points',pts,pts[id])})}
 function arrange(){
   if(ro)return;const all=Object.values(pts);if(all.length<3)return;
