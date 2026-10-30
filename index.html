@@ -200,9 +200,9 @@ const radW=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[
 function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,u=has&&q.cx!=null&&CS.has(q.id);return{x:u?q.cx:q.x,y:u?q.cy:q.y,r:has?radW(q):0}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
   const Cx=(a.x+b.x)/2*.8,Cy=(a.y+b.y)/2*.8;let d='';
   if((a.r||b.r)&&isClose(p,t)){W.append(S('path',{d:`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`,...st}));return}
-  if(!a.r&&!b.r)d=`M${a.x} ${a.y}Q${Cx} ${Cy} ${b.x} ${b.y}`;else{let on=false;for(let i=0;i<=80;i++){const f=i/80,u=1-f,x=u*u*a.x+2*u*f*Cx+f*f*b.x,y=u*u*a.y+2*u*f*Cy+f*f*b.y;if(Math.hypot(x-a.x,y-a.y)>a.r&&Math.hypot(x-b.x,y-b.y)>b.r){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
+  if(!a.r&&!b.r)d=`M${a.x} ${a.y}Q${Cx} ${Cy} ${b.x} ${b.y}`;else{let on=false;for(let i=0;i<=80;i++){const f=i/80,u=1-f,x=u*u*a.x+2*u*f*Cx+f*f*b.x,y=u*u*a.y+2*u*f*Cy+f*f*b.y;if(Math.hypot(x-a.x,y-a.y)>a.r*.75&&Math.hypot(x-b.x,y-b.y)>b.r*.75){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
   // too little line left between the markers and drawings: bow a plain curve around the drawings instead
-  if(a.r+b.r){let kept=0;const dd=Math.hypot(b.x-a.x,b.y-a.y);(d.match(/[ML]/g)||[]).forEach(()=>kept++);if(kept*dd/80<24/Math.sqrt(view.k)){const mx=(p.x+t.x)/2,my=(p.y+t.y)/2,dx=t.x-p.x,dy=t.y-p.y,L=Math.hypot(dx,dy)||1;let nx=-dy/L,ny=dx/L;if(nx*mx+ny*my>0){nx=-nx;ny=-ny}const bow=2*(Math.max(a.r,b.r)+14);d=`M${p.x} ${p.y}Q${mx+nx*bow} ${my+ny*bow} ${t.x} ${t.y}`}}
+  if(a.r+b.r){let kept=0;const dd=Math.hypot(b.x-a.x,b.y-a.y);(d.match(/[ML]/g)||[]).forEach(()=>kept++);if(kept*dd/80<40/Math.sqrt(view.k)){const mx=(p.x+t.x)/2,my=(p.y+t.y)/2,dx=t.x-p.x,dy=t.y-p.y,L=Math.hypot(dx,dy)||1;let nx=-dy/L,ny=dx/L;if(nx*mx+ny*my>0){nx=-nx;ny=-ny}const bow=2*(Math.max(a.r,b.r)+14);d=`M${p.x} ${p.y}Q${mx+nx*bow} ${my+ny*bow} ${t.x} ${t.y}`}}
   if(d)W.append(S('path',{d,...st}))}
 function draw(){
   const W=$('#w');W.textContent='';CS=new Set();Object.values(pts).forEach(q=>{if(q.to&&pts[q.to]){CS.add(q.id);CS.add(q.to)}});
