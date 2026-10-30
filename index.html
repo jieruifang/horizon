@@ -64,7 +64,9 @@ function makeSupabase(){
   return{db:{collection:n=>query(n,[])},assets}}
 </script>
 <script>
-const CATS={trade:'Trade',flora:'Flora',fauna:'Fauna',inst:'Institutions',story:'Story',eco:'Ecosystem',concept:'Concept',other:'Other'};
+const CATS={trade:'Object',flora:'Flora',fauna:'Fauna',inst:'Institution',story:'Story',eco:'Ecosystem',concept:'Concept',other:'Other'};
+// display order (dash styles stay tied to the key order above, so existing points keep their outlines)
+const CORD=['flora','fauna','inst','story','eco','concept','trade','other'],CK=Object.keys(CATS);
 const DASH=['1 0','2 4','7 3','1 6','10 4 2 4','3 3','14 6','5 2 1 2'];
 const TYPES={image:'Image',model:'3D object',text:'Text'};
 const FIGS={none:'— none —',flower:'Boot / flower',network:'Network',back:'Backtracking',conquest:'Conquest',canvass:'Canvassing',farmer:'Farmer',leap:'Leap',pendulum:'Pendulum'};
@@ -278,7 +280,7 @@ function panel(){
   const el=$('#panel');const p=pts[sel]||(draft&&draft.id===sel?draft:null);
   if(!p){el.classList.remove('open');$('#add').style.display=ro?'none':'';setTimeout(()=>{if(!pts[sel])el.textContent=''},400);return}
   el.textContent='';el.classList.add('open');$('#add').style.display='none';
-  const catOpt=cur=>[(()=>{const o=h('option',{value:''},'None');if(!cur)o.selected=true;return o})(),...Object.entries(CATS).map(([k,v])=>{const o=h('option',{value:k},v);if(k===cur)o.selected=true;return o})];const save=()=>put('points',pts,p),opt=(m,cur)=>Object.entries(m).map(([k,v])=>{const o=h('option',{value:k},v);if(k===cur)o.selected=true;return o});
+  const catOpt=cur=>[(()=>{const o=h('option',{value:''},'None');if(!cur)o.selected=true;return o})(),...CORD.map(k=>[k,CATS[k]]).map(([k,v])=>{const o=h('option',{value:k},v);if(k===cur)o.selected=true;return o})];const save=()=>put('points',pts,p),opt=(m,cur)=>Object.entries(m).map(([k,v])=>{const o=h('option',{value:k},v);if(k===cur)o.selected=true;return o});
   el.append(
     h('div',{class:'ph'},h('span',{},'Point'),h('button',{class:'x','aria-label':'close',onclick:()=>{draft=null;sel=null;connFrom=null;drawId=null;cur=null;svg.style.cursor='';draw();panel()}},'×')),
     h('label',{},'Name'),h('input',{value:p.title||'',onchange:e=>{p.title=e.target.value;save()}}),
@@ -327,7 +329,7 @@ function view3d(el,url,name,pt){let SZ=0;
   (function loop(){if(!el.isConnected){r.dispose();return}s.traverse(x=>{if(x.isPoints&&x.material.uniforms)x.material.uniforms.fd.value=c.position.length()});oc.update();r.render(s,c);requestAnimationFrame(loop)})();
 }
 // legend + init
-$('#leg').append(...Object.entries(CATS).map(([k,v],i)=>{const d=h('div',{},v);const sv=S('svg',{width:34,height:10,style:'vertical-align:middle;margin-right:6px'});sv.append(S('line',{x1:0,y1:5,x2:34,y2:5,stroke:'var(--fg)','stroke-dasharray':DASH[i]}));d.prepend(sv);return d}));
+$('#leg').append(...CORD.map(k=>[k,CATS[k],CK.indexOf(k)]).map(([k,v,i])=>{const d=h('div',{},v);const sv=S('svg',{width:34,height:10,style:'vertical-align:middle;margin-right:6px'});sv.append(S('line',{x1:0,y1:5,x2:34,y2:5,stroke:'var(--fg)','stroke-dasharray':DASH[i]}));d.prepend(sv);return d}));
 fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
 
 // resizable left pane
