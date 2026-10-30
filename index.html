@@ -162,7 +162,7 @@ $('#vb').onclick=()=>{const e=$('#vpop');e.style.display=e.style.display==='bloc
 $('#arr').onclick=arrange;$('#conn').onclick=()=>{connMode=!connMode;connFrom=null;if(connMode){sel=null;panel()}draw();connUI()};addEventListener('keydown',e=>{if(e.key==='Escape'&&connMode){connMode=false;connFrom=null;draw();connUI()}});
 let drawId=null,cur=null;function kidsOf(id,seen=new Set([id])){const o=[];for(const q of Object.values(pts))if(q.to===id&&!seen.has(q.id)){seen.add(q.id);o.push(q,...kidsOf(q.id,seen))}return o}
 function wp(e){const r=svg.getBoundingClientRect(),p=pts[drawId];return[(e.clientX-r.left-view.x)/view.k-p.x,(e.clientY-r.top-view.y)/view.k-p.y]}
-function pe(d,p){return S('path',{d,'clip-path':'url(#dclip)',transform:`translate(${p.cx!=null?p.cx:p.x} ${p.cy!=null?p.cy:p.y}) scale(${(p.sc||1)/Math.sqrt(view.k)})`,'pointer-events':'none',fill:'none',stroke:'var(--fg)','stroke-width':1.6,'stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'})}
+let CS=new Set();function pe(d,p){const uc=p.cx!=null&&CS.has(p.id);return S('path',{d,'clip-path':'url(#dclip)',transform:`translate(${uc?p.cx:p.x} ${uc?p.cy:p.y}) scale(${(p.sc||1)/Math.sqrt(view.k)})`,'pointer-events':'none',fill:'none',stroke:'var(--fg)','stroke-width':1.6,'stroke-linecap':'round','stroke-linejoin':'round','vector-effect':'non-scaling-stroke'})}
 function sm(a){const f=n=>Math.round(n*10)/10;let d=`M${f(a[0][0])} ${f(a[0][1])}`;for(let i=1;i<a.length-1;i++){const m=[(a[i][0]+a[i+1][0])/2,(a[i][1]+a[i+1][1])/2];d+=`Q${f(a[i][0])} ${f(a[i][1])} ${f(m[0])} ${f(m[1])}`}const l=a[a.length-1];return d+`L${f(l[0])} ${f(l[1])}`}
 function finishStroke(){const p=pts[drawId],a=cur;cur=null;if(!p||a.length<2){draw();return}p.paths=(p.paths||[]).concat(sm(a));put('points',pts,p)}
 const R=520;function ring(p){const m=Math.hypot(p.x,p.y);if(m<1){p.x=R;p.y=0}else{p.x*=R/m;p.y*=R/m}}
@@ -188,7 +188,7 @@ $('#fit').onclick=fit;
 $('#map').addEventListener('wheel',e=>{e.preventDefault();zoom(view.k*(e.deltaY<0?1.1:.9),e.clientX,e.clientY)},{passive:false});
 // draw
 function draw(){
-  const W=$('#w');W.textContent='';
+  const W=$('#w');W.textContent='';CS=new Set();Object.values(pts).forEach(q=>{if(q.to&&pts[q.to]){CS.add(q.id);CS.add(q.to)}});
   W.append(S('circle',{r:R,fill:'none',stroke:'var(--line)','stroke-width':1,'vector-effect':'non-scaling-stroke'}));
   for(const id in {}){const l=lns[id],a=pts[l.a],b=pts[l.b];if(!a||!b)continue;const dx=b.x-a.x,dy=b.y-a.y;
     W.append(S('path',{d:`M${a.x} ${a.y}Q${(a.x+b.x)/2-dy*.18} ${(a.y+b.y)/2+dx*.18} ${b.x} ${b.y}`,fill:'none',stroke:'var(--fg)','stroke-width':1.8,'vector-effect':'non-scaling-stroke'}))}
@@ -206,7 +206,7 @@ function draw(){
       const rad=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((a,v,i,r)=>i%2?a:[...a,Math.hypot(+v,+r[i+1]||0)],[])))*(q.sc||1)/Math.sqrt(view.k),A=[];if(hp)A.push({x:p.cx,y:p.cy,r:rad(p)});if(ht)A.push({x:t.cx,y:t.cy,r:rad(t)});
       // curved connector, shortened wherever a drawing sits on it
       const Cx=(p.x+t.x)/2*.8,Cy=(p.y+t.y)/2*.8;let d='';if(direct||!A.length)d=`M${p.x} ${p.y}Q${Cx} ${Cy} ${t.x} ${t.y}`;else{let on=false;for(let i=0;i<=80;i++){const f=i/80,u=1-f,x=u*u*p.x+2*u*f*Cx+f*f*t.x,y=u*u*p.y+2*u*f*Cy+f*f*t.y,out=A.every(a=>Math.hypot(x-a.x,y-a.y)>a.r);if(out){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
-      if(d)W.append(S('path',{d,...st}))}}}(p.paths||[]).forEach(d=>{W.append(pe(d,p));const h2=pe(d,p);h2.setAttribute('stroke','transparent');h2.setAttribute('stroke-width',18);h2.setAttribute('pointer-events','stroke');h2.setAttribute('data-draw',id);h2.style.cursor='move';W.append(h2)})}
+      if(d)W.append(S('path',{d,...st}))}}}(p.paths||[]).forEach(d=>{W.append(pe(d,p));const h2=pe(d,p);h2.setAttribute('stroke','transparent');h2.setAttribute('stroke-width',18);h2.setAttribute('pointer-events','stroke');h2.setAttribute('data-draw',id);h2.style.cursor='move';if(CS.has(id))W.append(h2)})}
   if(cd&&pts[cd.from]&&cd.pt){const f=pts[cd.from],to=cd.over&&pts[cd.over]?[pts[cd.over].x,pts[cd.over].y]:cd.pt;W.append(S('line',{x1:f.x,y1:f.y,x2:to[0],y2:to[1],stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round','vector-effect':'non-scaling-stroke','pointer-events':'none'}))}
   Object.values(pts).forEach(p=>(p.links||[]).forEach(t=>{const q=pts[t];if(!q)return;const hot=p.id===sel||t===sel;W.append(S('path',{d:`M${p.x} ${p.y}Q${(p.x+q.x)/2*.8} ${(p.y+q.y)/2*.8} ${q.x} ${q.y}`,fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'}))}));
   lb.forEach(g=>W.append(g));mk.forEach(g=>W.append(g));
