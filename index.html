@@ -116,8 +116,8 @@ const isClose=(p,t)=>{const k=1/Math.sqrt(view.k),h=Math.hypot(t.x-p.x,t.y-p.y)/
 const sp0=q=>{const k=1/Math.sqrt(view.k)*(q.sc||1),o=[];(q.paths||[]).forEach(d=>{const n=(d.match(/-?\d+\.?\d*/g)||[]).map(Number);for(let i=0;i+1<n.length;i+=2)o.push([n[i]*k,n[i+1]*k])});return o};
 // drawing of a close point: sits just inward of its marker, its nearest stroke clear of the dot
 const spd=q=>{const k=1/Math.sqrt(view.k)*(q.sc||1),o=[];(q.paths||[]).forEach(d=>{const n=(d.match(/-?\d+\.?\d*/g)||[]).map(Number);for(let i=0;i+1<n.length;i+=2){const x=n[i]*k,y=n[i+1]*k;if(i){const px=n[i-2]*k,py=n[i-1]*k,c=Math.max(1,Math.ceil(Math.hypot(x-px,y-py)/(10/Math.sqrt(view.k))));for(let j=1;j<c;j++)o.push([px+(x-px)*j/c,py+(y-py)*j/c])}o.push([x,y])}});return o};
-const thin=P=>{const n=Math.ceil(P.length/40);return P.filter((_,i)=>i%n===0)};
-const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,k=1/Math.sqrt(view.k),P=thin(sp0(a)),need=(R0(a)+55)*k,others=Object.values(pts).filter(o=>o.id!==a.id),
+const thin=P=>{const n=Math.ceil(P.length/160);return P.filter((_,i)=>i%n===0)};
+const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,k=1/Math.sqrt(view.k),P=thin(spd(a)),need=(R0(a)+22)*k,others=Object.values(pts).filter(o=>o.id!==a.id),
   dr=others.filter(o=>CXY[o.id]&&hasP(o)).map(o=>thin(sp0(o)).map(p=>[CXY[o.id][0]+p[0],CXY[o.id][1]+p[1]])).flat();let best=null;
   // the drawing stays inside the circle, clear of every marker, label and other drawing, and far enough from its dot to show a line to it
   const okAt=(cx,cy)=>P.every(p=>{const x=cx+p[0],y=cy+p[1];return Math.hypot(x-a.x,y-a.y)>=need&&Math.hypot(x,y)<=R-4*k&&others.every(o=>Math.hypot(x-o.x,y-o.y)>=(R0(o)+8)*k&&!(Math.abs(x-o.x)<(((o.title||'').length*4.2)+6)*k&&y>o.y+R0(o)*k&&y<o.y+(R0(o)+34)*k))});
