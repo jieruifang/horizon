@@ -113,7 +113,9 @@ const R0=q=>q.type==='text'?16:40,rd=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(
 // two connected points sit too close to fit their drawings between them
 const isClose=(p,t)=>{const k=1/Math.sqrt(view.k),h=Math.hypot(t.x-p.x,t.y-p.y)/2,ra=hasP(p)?rd(p)*k:0,rb=hasP(t)?rd(t)*k:0,sp=(ra+rb)*.8/2;return(hasP(p)&&h-sp-ra<R0(p)*k+6)||(hasP(t)&&h-sp-rb<R0(t)*k+6)};
 // a drawing tucked just inside its own point (used when the two points are too close for it to sit between them)
-const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,D=(R0(a)+rd(a)+14)/Math.sqrt(view.k);return[a.x-a.x/m*D,a.y-a.y/m*D]};
+const sp0=q=>{const k=1/Math.sqrt(view.k)*(q.sc||1),o=[];(q.paths||[]).forEach(d=>{const n=(d.match(/-?\d+\.?\d*/g)||[]).map(Number);for(let i=0;i+1<n.length;i+=2)o.push([n[i]*k,n[i+1]*k])});return o};
+// drawing of a close point: sits just inward of its marker, its nearest stroke clear of the dot
+const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,ux=-a.x/m,uy=-a.y/m,k=1/Math.sqrt(view.k),P=sp0(a),need=(R0(a)+8)*k;let D=0;for(;D<900*k;D+=3*k){const cx=a.x+ux*D,cy=a.y+uy*D;if(P.every(p=>Math.hypot(cx+p[0]-a.x,cy+p[1]-a.y)>=need))break}return[a.x+ux*D,a.y+uy*D]};
 let HM={},CXY={};
 // where each drawing sits is derived on every draw, never stored
 function layoutDrawings(){const all=Object.values(pts),inc={};all.forEach(p=>{if(p.to&&pts[p.to])(inc[p.to]=inc[p.to]||[]).push(p.id)});
@@ -211,7 +213,7 @@ function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,c=CX
   let d='';
   const cl=(a.r||b.r)&&isClose(p,t);
   // close points: each marker gets a short line out to its own drawing, then the connection runs drawing to drawing
-  if(cl)[[p,a],[t,b]].forEach(([M,Z])=>{if(!Z.u||!Z.r)return;let e='',n=0;for(let i=0;i<=40;i++){const x=M.x+(Z.x-M.x)*i/40,y=M.y+(Z.y-M.y)*i/40;if(Math.hypot(x-Z.x,y-Z.y)<=Z.r*.75)break;e+=(n?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);n++}if(n>1)W.append(S('path',{d:e,...st}))});
+  if(cl)[[p,a],[t,b]].forEach(([M,Z])=>{if(!Z.u||!Z.r)return;let bp=null,bd=1e9;sp0(M).forEach(q=>{const x=Z.x+q[0],y=Z.y+q[1],dd=Math.hypot(x-M.x,y-M.y);if(dd<bd){bd=dd;bp=[x,y]}});if(bp)W.append(S('path',{d:`M${M.x} ${M.y}L${bp[0]} ${bp[1]}`,...st}))});
   if(!a.r&&!b.r)d=`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`;else{
     // a drawing that isn't on this connector (the point has several) acts as a hub: the line leaves from its edge
     const cv=(P,T)=>{const Cx=(P.x+T.x)/2*.8,Cy=(P.y+T.y)/2*.8;return f=>{const u=1-f;return[u*u*P.x+2*u*f*Cx+f*f*T.x,u*u*P.y+2*u*f*Cy+f*f*T.y]}};
