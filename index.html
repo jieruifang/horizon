@@ -207,14 +207,14 @@ const radW=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[
 // dashed curve between two points; where a point has a drawing the line starts and ends at the drawing's edge
 function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,c=CXY[q.id],u=has&&!!c;return{x:u?c[0]:q.x,y:u?c[1]:q.y,r:has?radW(q):0,u}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
   let d='';
-  if((a.r||b.r)&&isClose(p,t)){W.append(S('path',{d:`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`,...st}));return}
+  const cl=(a.r||b.r)&&isClose(p,t);
+  // close points: each marker gets a short line out to its own drawing, then the connection runs drawing to drawing
+  if(cl)[[p,a],[t,b]].forEach(([M,Z])=>{if(!Z.u||!Z.r)return;let e='',n=0;for(let i=0;i<=40;i++){const x=M.x+(Z.x-M.x)*i/40,y=M.y+(Z.y-M.y)*i/40;if(Math.hypot(x-Z.x,y-Z.y)<=Z.r*.75)break;e+=(n?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);n++}if(n>1)W.append(S('path',{d:e,...st}))});
   if(!a.r&&!b.r)d=`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`;else{
     // a drawing that isn't on this connector (the point has several) acts as a hub: the line leaves from its edge
     const cv=(P,T)=>{const Cx=(P.x+T.x)/2*.8,Cy=(P.y+T.y)/2*.8;return f=>{const u=1-f;return[u*u*P.x+2*u*f*Cx+f*f*T.x,u*u*P.y+2*u*f*Cy+f*f*T.y]}};
-    const P=a.u&&HM[p.id]!==t.id?{x:a.x,y:a.y}:p,T=b.u&&HM[t.id]!==p.id?{x:b.x,y:b.y}:t,f=cv(P,T);let on=false;
+    const P=a.u&&(cl||HM[p.id]!==t.id)?{x:a.x,y:a.y}:p,T=b.u&&(cl||HM[t.id]!==p.id)?{x:b.x,y:b.y}:t,f=cv(P,T);let on=false;
     for(let i=0;i<=80;i++){const q=f(i/80),x=q[0],y=q[1];if(Math.hypot(x-a.x,y-a.y)>a.r*.75&&Math.hypot(x-b.x,y-b.y)>b.r*.75){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
-  // the stretch from a point to its own drawing is solid, so it is clear which point each drawing belongs to
-  if(!(a.r||b.r)||isClose(p,t)){}else{const own=(Z,Q,X)=>{if(!Z.r||!Z.u||HM[X===p?p.id:t.id]!==(X===p?t.id:p.id))return;const M=X===p?p:t,O=X===p?t:p,Cx=(M.x+O.x)/2*.8,Cy=(M.y+O.y)/2*.8;let e='',n=0;for(let i=0;i<=80;i++){const f=i/80,u=1-f,x=u*u*M.x+2*u*f*Cx+f*f*O.x,y=u*u*M.y+2*u*f*Cy+f*f*O.y;if(Math.hypot(x-Z.x,y-Z.y)<=Z.r*.75)break;e+=(n?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);n++}if(n>1)W.append(S('path',{d:e,...st,'stroke-dasharray':'none'}))};own(a,b,p);own(b,a,t)}
   // too little line left between the markers and drawings: bow a plain curve around the drawings instead
   if(a.r+b.r){let kept=0;const dd=Math.hypot(t.x-p.x,t.y-p.y);(d.match(/[ML]/g)||[]).forEach(()=>kept++);if(kept*dd/80<40/Math.sqrt(view.k)){const mx=(p.x+t.x)/2,my=(p.y+t.y)/2,dx=t.x-p.x,dy=t.y-p.y,L=Math.hypot(dx,dy)||1;let nx=-dy/L,ny=dx/L;if(nx*mx+ny*my>0){nx=-nx;ny=-ny}const bow=2*(Math.max(a.r,b.r)+14);d=`M${p.x} ${p.y}Q${mx+nx*bow} ${my+ny*bow} ${t.x} ${t.y}`}}
   if(d)W.append(S('path',{d,...st}))}
