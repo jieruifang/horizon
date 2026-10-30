@@ -229,7 +229,9 @@ function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,c=CX
   const cl=(a.r||b.r)&&isClose(p,t);
   // close points: each marker gets a short line out to its own drawing, then the connection runs drawing to drawing
   if(cl)[[p,a],[t,b]].forEach(([M,Z])=>{if(!Z.u||!Z.r)return;let bp=null,bd=1e9;sp0(M).forEach(q=>{const x=Z.ox+q[0],y=Z.oy+q[1],dd=Math.hypot(x-M.x,y-M.y);if(dd<bd){bd=dd;bp=[x,y]}});if(bp)W.append(S('path',{d:`M${M.x} ${M.y}L${bp[0]} ${bp[1]}`,...st}))});
-  if(cl&&a.r&&b.r)return; // both drawings are there and touch each other: the pair needs no third line
+  if(cl&&a.r&&b.r){ // both drawings: one short link between their nearest strokes, and none when they already touch
+    let g=1e9,u=null,v=null;a.S.forEach(z=>b.S.forEach(w=>{const q=Math.hypot(z[0]-w[0],z[1]-w[1]);if(q<g){g=q;u=z;v=w}}));
+    if(u&&g>14/Math.sqrt(view.k))W.append(S('path',{d:`M${u[0]} ${u[1]}L${v[0]} ${v[1]}`,...st}));return}
   if(!a.r&&!b.r)d=`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`;else{
     // a drawing that isn't on this connector (the point has several) acts as a hub: the line leaves from its edge
     const cv=(P,T)=>{const Cx=(P.x+T.x)/2*.8,Cy=(P.y+T.y)/2*.8;return f=>{const u=1-f;return[u*u*P.x+2*u*f*Cx+f*f*T.x,u*u*P.y+2*u*f*Cy+f*f*T.y]}};
