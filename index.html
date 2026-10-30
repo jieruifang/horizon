@@ -109,18 +109,21 @@ function center(){const r=$('#map').getBoundingClientRect();return[(r.width/2-vi
 const R0=q=>q.type==='text'?16:40,rd=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((a,v,i,r)=>i%2?a:[...a,Math.hypot(+v,+r[i+1]||0)],[])))*(q.sc||1),hasP=q=>(q.paths||[]).length>0;
 // two connected points sit too close to fit their drawings between them
 const isClose=(p,t)=>{const k=1/Math.sqrt(view.k),h=Math.hypot(t.x-p.x,t.y-p.y)/2,ra=hasP(p)?rd(p)*k:0,rb=hasP(t)?rd(t)*k:0,sp=(ra+rb)*.8/2;return(hasP(p)&&h-sp-ra<R0(p)*k+6)||(hasP(t)&&h-sp-rb<R0(t)*k+6)};
-function relayout(ids){const ps=Object.values(pts).filter(p=>p.to&&pts[p.to]&&(!ids||ids.has(p.id)||ids.has(p.to))),tg=new Set(ps.map(p=>p.to)),has=q=>(q.paths||[]).length>0,done=new Set();
-  ps.forEach(p=>{delete p.cx;delete p.cy});tg.forEach(id=>{const q=pts[id];if(q&&!q.to){delete q.cx;delete q.cy}});
-  // each drawing sits on the curve right beside its own point
-    const near=(a,b)=>{if(isClose(a,b)){const m=Math.hypot(a.x,a.y)||1,D=(R0(a)+rd(a)+14)/Math.sqrt(view.k);return[a.x-a.x/m*D,a.y-a.y/m*D]}const d=Math.hypot(b.x-a.x,b.y-a.y)||1,D=Math.min((R0(a)+rd(a)+14)/Math.sqrt(view.k),d*.45),Cx=(a.x+b.x)/2*.8,Cy=(a.y+b.y)/2*.8;let best=[a.x,a.y];for(let i=1;i<=100;i++){const f=i/100,u=1-f,x=u*u*a.x+2*u*f*Cx+f*f*b.x,y=u*u*a.y+2*u*f*Cy+f*f*b.y;best=[x,y];if(Math.hypot(x-a.x,y-a.y)>=D)break}return best};
-  ps.forEach(p=>{const t=pts[p.to];if(!has(p)&&!has(t))return;if(isClose(p,t)){if(has(p)){const c=near(p,t);p.cx=c[0];p.cy=c[1]}if(has(t)&&t.cx==null&&!t.to){const c=near(t,p);t.cx=c[0];t.cy=c[1]}return}
-    // drawings meet at the middle of the connector, side by side, each at the end of its own line
-    const k=1/Math.sqrt(view.k),d=Math.hypot(t.x-p.x,t.y-p.y)||1,ux=(t.x-p.x)/d,uy=(t.y-p.y)/d,mx=(p.x+t.x)/2*.9,my=(p.y+t.y)/2*.9,ra=has(p)?rd(p)*k:0,rb=has(t)?rd(t)*k:0,sp=(ra+rb)*.8/2,tFree=has(t)&&t.cx==null&&!t.to;
-    if(has(p)&&tFree){p.cx=mx-ux*sp;p.cy=my-uy*sp;t.cx=mx+ux*sp;t.cy=my+uy*sp}
-    else if(has(p)&&has(t)&&t.cx!=null){p.cx=t.cx-ux*(ra+rb)*.8;p.cy=t.cy-uy*(ra+rb)*.8}
-    else if(has(p)){p.cx=mx;p.cy=my}
-    else if(tFree){t.cx=mx;t.cy=my}});
-  ps.forEach(p=>put('points',pts,p));tg.forEach(id=>{if(pts[id]&&!pts[id].to)put('points',pts,pts[id])})}
+// a drawing tucked just inside its own point (used when the two points are too close for it to sit between them)
+const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,D=(R0(a)+rd(a)+14)/Math.sqrt(view.k);return[a.x-a.x/m*D,a.y-a.y/m*D]};
+let HM={};
+function relayout(){const all=Object.values(pts),inc={},before={};all.forEach(p=>{if(p.to&&pts[p.to])(inc[p.to]=inc[p.to]||[]).push(p.id)});
+  // each drawing has one home connector: its own outgoing one, else the first incoming, else a link
+  const home=q=>q.to&&pts[q.to]?q.to:(inc[q.id]?inc[q.id].slice().sort()[0]:null)||(q.links||[]).find(x=>pts[x])||(all.find(o=>(o.links||[]).includes(q.id))||{}).id||null;
+  HM={};all.forEach(q=>{HM[q.id]=home(q);before[q.id]=[q.cx,q.cy];delete q.cx;delete q.cy});
+  const k=1/Math.sqrt(view.k),done=new Set();let todo=all.filter(q=>hasP(q)&&HM[q.id]&&pts[HM[q.id]]);
+  const place=q=>{const t=pts[HM[q.id]],mutual=hasP(t)&&HM[t.id]===q.id;
+    if(isClose(q,t)){let c=near(q,t);q.cx=c[0];q.cy=c[1];done.add(q.id);if(mutual&&!done.has(t.id)){c=near(t,q);t.cx=c[0];t.cy=c[1];done.add(t.id)}return}
+    if(mutual){const A=q.id<t.id?q:t,B=A===q?t:q,d=Math.hypot(B.x-A.x,B.y-A.y)||1,ux=(B.x-A.x)/d,uy=(B.y-A.y)/d,mx=(A.x+B.x)/2*.9,my=(A.y+B.y)/2*.9,sp=(rd(A)+rd(B))*k*.8/2;A.cx=mx-ux*sp;A.cy=my-uy*sp;B.cx=mx+ux*sp;B.cy=my+uy*sp;done.add(A.id);done.add(B.id);return}
+    // otherwise sit midway to the partner (or to the partner's drawing when that sits on another connector)
+    const ax=t.cx!=null?t.cx:t.x,ay=t.cx!=null?t.cy:t.y;q.cx=(q.x+ax)/2*.9;q.cy=(q.y+ay)/2*.9;done.add(q.id)};
+  for(let pass=0;pass<6&&todo.length;pass++){const rest=[];todo.forEach(q=>{if(done.has(q.id))return;const t=pts[HM[q.id]],ready=!hasP(t)||done.has(t.id)||HM[t.id]===q.id||pass===5;if(ready)place(q);else rest.push(q)});todo=rest}
+  all.forEach(q=>{const b=before[q.id];if(b[0]!==q.cx||b[1]!==q.cy)put('points',pts,q)})}
 function arrange(){
   if(ro)return;const all=Object.values(pts);if(all.length<3)return;
   // spread points evenly, keeping their order around the circle (the spatial layout stays as placed)
@@ -199,15 +202,19 @@ $('#map').addEventListener('wheel',e=>{e.preventDefault();zoom(view.k*(e.deltaY<
 // draw
 const radW=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((a,v,i,r)=>i%2?a:[...a,Math.hypot(+v,+r[i+1]||0)],[])))*(q.sc||1)/Math.sqrt(view.k);
 // dashed curve between two points; where a point has a drawing the line starts and ends at the drawing's edge
-function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,u=has&&q.cx!=null&&CS.has(q.id);return{x:u?q.cx:q.x,y:u?q.cy:q.y,r:has?radW(q):0}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
-  const Cx=(p.x+t.x)/2*.8,Cy=(p.y+t.y)/2*.8;let d='';
+function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,u=has&&q.cx!=null&&CS.has(q.id);return{x:u?q.cx:q.x,y:u?q.cy:q.y,r:has?radW(q):0,u}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
+  let d='';
   if((a.r||b.r)&&isClose(p,t)){W.append(S('path',{d:`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`,...st}));return}
-  if(!a.r&&!b.r)d=`M${p.x} ${p.y}Q${Cx} ${Cy} ${t.x} ${t.y}`;else{let on=false;for(let i=0;i<=80;i++){const f=i/80,u=1-f,x=u*u*p.x+2*u*f*Cx+f*f*t.x,y=u*u*p.y+2*u*f*Cy+f*f*t.y;if(Math.hypot(x-a.x,y-a.y)>a.r*.75&&Math.hypot(x-b.x,y-b.y)>b.r*.75){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
+  if(!a.r&&!b.r)d=`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`;else{
+    // a drawing that isn't on this connector (the point has several) acts as a hub: the line leaves from its edge
+    const cv=(P,T)=>{const Cx=(P.x+T.x)/2*.8,Cy=(P.y+T.y)/2*.8;return f=>{const u=1-f;return[u*u*P.x+2*u*f*Cx+f*f*T.x,u*u*P.y+2*u*f*Cy+f*f*T.y]}};
+    const P=a.u&&HM[p.id]!==t.id?{x:a.x,y:a.y}:p,T=b.u&&HM[t.id]!==p.id?{x:b.x,y:b.y}:t,f=cv(P,T);let on=false;
+    for(let i=0;i<=80;i++){const q=f(i/80),x=q[0],y=q[1];if(Math.hypot(x-a.x,y-a.y)>a.r*.75&&Math.hypot(x-b.x,y-b.y)>b.r*.75){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
   // too little line left between the markers and drawings: bow a plain curve around the drawings instead
   if(a.r+b.r){let kept=0;const dd=Math.hypot(t.x-p.x,t.y-p.y);(d.match(/[ML]/g)||[]).forEach(()=>kept++);if(kept*dd/80<40/Math.sqrt(view.k)){const mx=(p.x+t.x)/2,my=(p.y+t.y)/2,dx=t.x-p.x,dy=t.y-p.y,L=Math.hypot(dx,dy)||1;let nx=-dy/L,ny=dx/L;if(nx*mx+ny*my>0){nx=-nx;ny=-ny}const bow=2*(Math.max(a.r,b.r)+14);d=`M${p.x} ${p.y}Q${mx+nx*bow} ${my+ny*bow} ${t.x} ${t.y}`}}
   if(d)W.append(S('path',{d,...st}))}
 function draw(){
-  const W=$('#w');W.textContent='';CS=new Set();Object.values(pts).forEach(q=>{if(q.to&&pts[q.to]){CS.add(q.id);CS.add(q.to)}});
+  const W=$('#w');W.textContent='';CS=new Set();Object.values(pts).forEach(q=>{[q.to,...(q.links||[])].forEach(x=>{if(x&&pts[x]){CS.add(q.id);CS.add(x)}})});
   W.append(S('circle',{r:R,fill:'none',stroke:'var(--line)','stroke-width':1,'vector-effect':'non-scaling-stroke'}));
   for(const id in {}){const l=lns[id],a=pts[l.a],b=pts[l.b];if(!a||!b)continue;const dx=b.x-a.x,dy=b.y-a.y;
     W.append(S('path',{d:`M${a.x} ${a.y}Q${(a.x+b.x)/2-dy*.18} ${(a.y+b.y)/2+dx*.18} ${b.x} ${b.y}`,fill:'none',stroke:'var(--fg)','stroke-width':1.8,'vector-effect':'non-scaling-stroke'}))}
@@ -245,7 +252,7 @@ function up(e){P.delete(e.pointerId);if(cd){const c=cd;cd=null;svg.style.cursor=
   if(d.moved){if(d.dw){put('points',pts,pts[d.dw]);d.kids.forEach(k=>{if(pts[k.id])put('points',pts,pts[k.id])})}else if(d.id){put('points',pts,pts[d.id]);relayout(new Set([d.id]))}}else click(d.id||d.dw)}
 svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
 let connMode=false;
-function applyConnect(p,t){if(p.id===t.id||p.to===t.id||t.to===p.id||(p.links||[]).includes(t.id)||(t.links||[]).includes(p.id))return;if(p.to&&pts[p.to]){(p.links=p.links||[]).push(t.id);put('points',pts,p);return}p.to=t.id;relayout(new Set([p.id]))}
+function applyConnect(p,t){if(p.id===t.id||p.to===t.id||t.to===p.id||(p.links||[]).includes(t.id)||(t.links||[]).includes(p.id))return;if(p.to&&pts[p.to]){(p.links=p.links||[]).push(t.id);put('points',pts,p);relayout();return}p.to=t.id;relayout(new Set([p.id]))}
 function connList(p){
   const rows=[];if(p.to&&pts[p.to])rows.push({o:pts[p.to],rel:()=>{delete p.cx;delete p.cy;delete p.to;put('points',pts,p);panel()}});
   (p.links||[]).forEach(t=>{if(pts[t])rows.push({o:pts[t],rel:()=>{p.links=p.links.filter(x=>x!==t);put('points',pts,p);panel()}})});
