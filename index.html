@@ -226,7 +226,7 @@ $('#map').addEventListener('wheel',e=>{e.preventDefault();zoom(view.k*(e.deltaY<
 const radW=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((a,v,i,r)=>i%2?a:[...a,Math.hypot(+v,+r[i+1]||0)],[])))*(q.sc||1)/Math.sqrt(view.k);
 // dashed curve between two points; where a point has a drawing the line starts and ends at the drawing's edge
 function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,c=CXY[q.id],u=has&&!!c,bx=has?bb(q):{cx:0,cy:0},ox=u?c[0]:q.x,oy=u?c[1]:q.y;return{x:ox+(has?bx.cx:0),y:oy+(has?bx.cy:0),ox,oy,r:has?radW(q):0,u,S:has?thin(spd(q)).map(z=>[ox+z[0],oy+z[1]]):[]}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
-  let d='';const gp=10/Math.sqrt(view.k),clr=(Z,x,y)=>!Z.r||Z.S.every(z=>Math.hypot(x-z[0],y-z[1])>gp);
+  let d='';const gp=10/Math.sqrt(view.k),clr=(Z,x,y)=>{if(!Z.r||!Z.S.length)return true;const xs=Z.S.map(z=>z[0]),ys=Z.S.map(z=>z[1]);return x<Math.min(...xs)-gp||x>Math.max(...xs)+gp||y<Math.min(...ys)-gp||y>Math.max(...ys)+gp};
   const cl=(a.r||b.r)&&isClose(p,t);
   // close points: each marker gets a short line out to its own drawing, then the connection runs drawing to drawing
   if(cl)[[p,a],[t,b]].forEach(([M,Z])=>{if(!Z.u||!Z.r)return;let bp=null,bd=1e9;sp0(M).forEach(q=>{const x=Z.ox+q[0],y=Z.oy+q[1],dd=Math.hypot(x-M.x,y-M.y);if(dd<bd){bd=dd;bp=[x,y]}});if(bp)W.append(S('path',{d:`M${M.x} ${M.y}L${bp[0]} ${bp[1]}`,...st}))});
