@@ -122,7 +122,7 @@ function layoutDrawings(){const all=Object.values(pts),inc={};all.forEach(p=>{if
   const k=1/Math.sqrt(view.k),done=new Set();let todo=all.filter(q=>hasP(q)&&HM[q.id]&&pts[HM[q.id]]);
   const place=q=>{const t=pts[HM[q.id]],mutual=hasP(t)&&HM[t.id]===q.id;
     if(isClose(q,t)){CXY[q.id]=near(q,t);done.add(q.id);if(mutual&&!done.has(t.id)){CXY[t.id]=near(t,q);done.add(t.id)}return}
-    if(mutual){const A=q.id<t.id?q:t,B=A===q?t:q,d=Math.hypot(B.x-A.x,B.y-A.y)||1,ux=(B.x-A.x)/d,uy=(B.y-A.y)/d,mx=(A.x+B.x)/2*.9,my=(A.y+B.y)/2*.9,sp=(rd(A)+rd(B))*k*.8/2;CXY[A.id]=[mx-ux*sp,my-uy*sp];CXY[B.id]=[mx+ux*sp,my+uy*sp];done.add(A.id);done.add(B.id);return}
+    if(mutual){const A=q.id<t.id?q:t,B=A===q?t:q,d=Math.hypot(B.x-A.x,B.y-A.y)||1,ux=(B.x-A.x)/d,uy=(B.y-A.y)/d,mx=(A.x+B.x)/2*.9,my=(A.y+B.y)/2*.9,sp=(rd(A)+rd(B))*k*.5/2;CXY[A.id]=[mx-ux*sp,my-uy*sp];CXY[B.id]=[mx+ux*sp,my+uy*sp];done.add(A.id);done.add(B.id);return}
     // otherwise sit midway to the partner (or to the partner's drawing when that sits on another connector)
     const an=CXY[t.id]||[t.x,t.y];CXY[q.id]=[(q.x+an[0])/2*.9,(q.y+an[1])/2*.9];done.add(q.id)};
   for(let pass=0;pass<6&&todo.length;pass++){const rest=[];todo.forEach(q=>{if(done.has(q.id))return;const t=pts[HM[q.id]],ready=!hasP(t)||done.has(t.id)||HM[t.id]===q.id||pass===5;if(ready)place(q);else rest.push(q)});todo=rest}}
@@ -414,7 +414,7 @@ fit();try{new ResizeObserver(()=>fit()).observe($('#mapwrap'))}catch(e){}
     {const DG=nodes.dgs||{},DP={},V=THREE.Vector3,cur=(A,B,f)=>{const cx=(A.x+B.x)/2*.8,cy=(A.y+B.y)/2*.8,cz=(A.z+B.z)/2*.8,u=1-f;return new V(u*u*A.x+2*u*f*cx+f*f*B.x,u*u*A.y+2*u*f*cy+f*f*B.y,u*u*A.z+2*u*f*cz+f*f*B.z)},done=new Set();
       let todo=Object.keys(DG).filter(id=>ix[id]&&HM[id]&&ix[HM[id]]);
       const put3=id=>{const h=HM[id],A=ix[id].grp.position,B=ix[h].grp.position,mutual=DG[h]&&HM[h]===id;
-        if(mutual){const a=id<h?id:h,b=a===id?h:id,Pa=ix[a].grp.position,Pb=ix[b].grp.position,m=cur(Pa,Pb,.5),dr=Pb.clone().sub(Pa).normalize(),sp=(DG[a].rad+DG[b].rad)*.4;DP[a]=m.clone().sub(dr.clone().multiplyScalar(sp));DP[b]=m.clone().add(dr.multiplyScalar(sp));done.add(a);done.add(b);return}
+        if(mutual){const a=id<h?id:h,b=a===id?h:id,Pa=ix[a].grp.position,Pb=ix[b].grp.position,m=cur(Pa,Pb,.5),dr=Pb.clone().sub(Pa).normalize(),sp=(DG[a].rad+DG[b].rad)*.25;DP[a]=m.clone().sub(dr.clone().multiplyScalar(sp));DP[b]=m.clone().add(dr.multiplyScalar(sp));done.add(a);done.add(b);return}
         DP[id]=cur(A,DP[h]||B,.5);done.add(id)};
       for(let pass=0;pass<6&&todo.length;pass++){const rest=[];todo.forEach(id=>{if(done.has(id))return;const h=HM[id],ready=!DG[h]||done.has(h)||HM[h]===id||pass===5;if(ready)put3(id);else rest.push(id)});todo=rest}
       Object.keys(DG).forEach(id=>{const d=DG[id],n=ix[id];if(!n)return;if(DP[id]){d.g.position.copy(DP[id]);const dir=DP[id].clone();if(dir.length()<.01)dir.set(0,1,0);d.g.quaternion.identity().slerp(upQ(dir.normalize()),mix);d.c=DP[id]}else{d.g.position.copy(n.grp.position);d.g.quaternion.copy(n.inner.quaternion);d.c=n.grp.position}});
