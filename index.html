@@ -108,12 +108,18 @@ function center(){const r=$('#map').getBoundingClientRect();return[(r.width/2-vi
 // re-place the drawings of connected points so they meet midway (after points move)
 const R0=q=>q.type==='text'?16:40,rd=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((a,v,i,r)=>i%2?a:[...a,Math.hypot(+v,+r[i+1]||0)],[])))*(q.sc||1),hasP=q=>(q.paths||[]).length>0;
 // two connected points sit too close to fit their drawings between them
-const isClose=(p,t)=>{const k=1/Math.sqrt(view.k),dd=Math.hypot(t.x-p.x,t.y-p.y);return dd*.45<Math.max(hasP(p)?(R0(p)+rd(p)+14)*k:0,hasP(t)?(R0(t)+rd(t)+14)*k:0)};
+const isClose=(p,t)=>{const k=1/Math.sqrt(view.k),h=Math.hypot(t.x-p.x,t.y-p.y)/2,ra=hasP(p)?rd(p)*k:0,rb=hasP(t)?rd(t)*k:0,sp=(ra+rb)*.8/2;return(hasP(p)&&h-sp-ra<R0(p)*k+6)||(hasP(t)&&h-sp-rb<R0(t)*k+6)};
 function relayout(ids){const ps=Object.values(pts).filter(p=>p.to&&pts[p.to]&&(!ids||ids.has(p.id)||ids.has(p.to))),tg=new Set(ps.map(p=>p.to)),has=q=>(q.paths||[]).length>0,done=new Set();
   ps.forEach(p=>{delete p.cx;delete p.cy});tg.forEach(id=>{const q=pts[id];if(q&&!q.to){delete q.cx;delete q.cy}});
   // each drawing sits on the curve right beside its own point
     const near=(a,b)=>{if(isClose(a,b)){const m=Math.hypot(a.x,a.y)||1,D=(R0(a)+rd(a)+14)/Math.sqrt(view.k);return[a.x-a.x/m*D,a.y-a.y/m*D]}const d=Math.hypot(b.x-a.x,b.y-a.y)||1,D=Math.min((R0(a)+rd(a)+14)/Math.sqrt(view.k),d*.45),Cx=(a.x+b.x)/2*.8,Cy=(a.y+b.y)/2*.8;let best=[a.x,a.y];for(let i=1;i<=100;i++){const f=i/100,u=1-f,x=u*u*a.x+2*u*f*Cx+f*f*b.x,y=u*u*a.y+2*u*f*Cy+f*f*b.y;best=[x,y];if(Math.hypot(x-a.x,y-a.y)>=D)break}return best};
-  ps.forEach(p=>{const t=pts[p.to];if(has(p)){const c=near(p,t);p.cx=c[0];p.cy=c[1]}if(has(t)&&t.cx==null&&!t.to){const c=near(t,p);t.cx=c[0];t.cy=c[1]}});
+  ps.forEach(p=>{const t=pts[p.to];if(!has(p)&&!has(t))return;if(isClose(p,t)){if(has(p)){const c=near(p,t);p.cx=c[0];p.cy=c[1]}if(has(t)&&t.cx==null&&!t.to){const c=near(t,p);t.cx=c[0];t.cy=c[1]}return}
+    // drawings meet at the middle of the connector, side by side, each at the end of its own line
+    const k=1/Math.sqrt(view.k),d=Math.hypot(t.x-p.x,t.y-p.y)||1,ux=(t.x-p.x)/d,uy=(t.y-p.y)/d,mx=(p.x+t.x)/2*.9,my=(p.y+t.y)/2*.9,ra=has(p)?rd(p)*k:0,rb=has(t)?rd(t)*k:0,sp=(ra+rb)*.8/2,tFree=has(t)&&t.cx==null&&!t.to;
+    if(has(p)&&tFree){p.cx=mx-ux*sp;p.cy=my-uy*sp;t.cx=mx+ux*sp;t.cy=my+uy*sp}
+    else if(has(p)&&has(t)&&t.cx!=null){p.cx=t.cx-ux*(ra+rb)*.8;p.cy=t.cy-uy*(ra+rb)*.8}
+    else if(has(p)){p.cx=mx;p.cy=my}
+    else if(tFree){t.cx=mx;t.cy=my}});
   ps.forEach(p=>put('points',pts,p));tg.forEach(id=>{if(pts[id]&&!pts[id].to)put('points',pts,pts[id])})}
 function arrange(){
   if(ro)return;const all=Object.values(pts);if(all.length<3)return;
@@ -198,11 +204,11 @@ $('#map').addEventListener('wheel',e=>{e.preventDefault();zoom(view.k*(e.deltaY<
 const radW=q=>Math.max(0,...(q.paths||[]).flatMap(d=>(d.match(/-?\d+\.?\d*/g)||[]).reduce((a,v,i,r)=>i%2?a:[...a,Math.hypot(+v,+r[i+1]||0)],[])))*(q.sc||1)/Math.sqrt(view.k);
 // dashed curve between two points; where a point has a drawing the line starts and ends at the drawing's edge
 function connector(W,p,t,hot){const en=q=>{const has=(q.paths||[]).length>0,u=has&&q.cx!=null&&CS.has(q.id);return{x:u?q.cx:q.x,y:u?q.cy:q.y,r:has?radW(q):0}},a=en(p),b=en(t),st={fill:'none',stroke:'var(--fg)','stroke-width':1.4,'stroke-dasharray':'3 5','stroke-linecap':'round',opacity:hot?1:.8,'vector-effect':'non-scaling-stroke','pointer-events':'none'};
-  const Cx=(a.x+b.x)/2*.8,Cy=(a.y+b.y)/2*.8;let d='';
+  const Cx=(p.x+t.x)/2*.8,Cy=(p.y+t.y)/2*.8;let d='';
   if((a.r||b.r)&&isClose(p,t)){W.append(S('path',{d:`M${p.x} ${p.y}Q${(p.x+t.x)/2*.8} ${(p.y+t.y)/2*.8} ${t.x} ${t.y}`,...st}));return}
-  if(!a.r&&!b.r)d=`M${a.x} ${a.y}Q${Cx} ${Cy} ${b.x} ${b.y}`;else{let on=false;for(let i=0;i<=80;i++){const f=i/80,u=1-f,x=u*u*a.x+2*u*f*Cx+f*f*b.x,y=u*u*a.y+2*u*f*Cy+f*f*b.y;if(Math.hypot(x-a.x,y-a.y)>a.r*.75&&Math.hypot(x-b.x,y-b.y)>b.r*.75){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
+  if(!a.r&&!b.r)d=`M${p.x} ${p.y}Q${Cx} ${Cy} ${t.x} ${t.y}`;else{let on=false;for(let i=0;i<=80;i++){const f=i/80,u=1-f,x=u*u*p.x+2*u*f*Cx+f*f*t.x,y=u*u*p.y+2*u*f*Cy+f*f*t.y;if(Math.hypot(x-a.x,y-a.y)>a.r*.75&&Math.hypot(x-b.x,y-b.y)>b.r*.75){d+=(on?'L':'M')+x.toFixed(1)+' '+y.toFixed(1);on=true}else on=false}}
   // too little line left between the markers and drawings: bow a plain curve around the drawings instead
-  if(a.r+b.r){let kept=0;const dd=Math.hypot(b.x-a.x,b.y-a.y);(d.match(/[ML]/g)||[]).forEach(()=>kept++);if(kept*dd/80<40/Math.sqrt(view.k)){const mx=(p.x+t.x)/2,my=(p.y+t.y)/2,dx=t.x-p.x,dy=t.y-p.y,L=Math.hypot(dx,dy)||1;let nx=-dy/L,ny=dx/L;if(nx*mx+ny*my>0){nx=-nx;ny=-ny}const bow=2*(Math.max(a.r,b.r)+14);d=`M${p.x} ${p.y}Q${mx+nx*bow} ${my+ny*bow} ${t.x} ${t.y}`}}
+  if(a.r+b.r){let kept=0;const dd=Math.hypot(t.x-p.x,t.y-p.y);(d.match(/[ML]/g)||[]).forEach(()=>kept++);if(kept*dd/80<40/Math.sqrt(view.k)){const mx=(p.x+t.x)/2,my=(p.y+t.y)/2,dx=t.x-p.x,dy=t.y-p.y,L=Math.hypot(dx,dy)||1;let nx=-dy/L,ny=dx/L;if(nx*mx+ny*my>0){nx=-nx;ny=-ny}const bow=2*(Math.max(a.r,b.r)+14);d=`M${p.x} ${p.y}Q${mx+nx*bow} ${my+ny*bow} ${t.x} ${t.y}`}}
   if(d)W.append(S('path',{d,...st}))}
 function draw(){
   const W=$('#w');W.textContent='';CS=new Set();Object.values(pts).forEach(q=>{if(q.to&&pts[q.to]){CS.add(q.id);CS.add(q.to)}});
