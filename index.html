@@ -115,15 +115,20 @@ const isClose=(p,t)=>{const k=1/Math.sqrt(view.k),h=Math.hypot(t.x-p.x,t.y-p.y)/
 // a drawing tucked just inside its own point (used when the two points are too close for it to sit between them)
 const sp0=q=>{const k=1/Math.sqrt(view.k)*(q.sc||1),o=[];(q.paths||[]).forEach(d=>{const n=(d.match(/-?\d+\.?\d*/g)||[]).map(Number);for(let i=0;i+1<n.length;i+=2)o.push([n[i]*k,n[i+1]*k])});return o};
 // drawing of a close point: sits just inward of its marker, its nearest stroke clear of the dot
+const spd=q=>{const k=1/Math.sqrt(view.k)*(q.sc||1),o=[];(q.paths||[]).forEach(d=>{const n=(d.match(/-?\d+\.?\d*/g)||[]).map(Number);for(let i=0;i+1<n.length;i+=2){const x=n[i]*k,y=n[i+1]*k;if(i){const px=n[i-2]*k,py=n[i-1]*k,c=Math.max(1,Math.ceil(Math.hypot(x-px,y-py)/(10/Math.sqrt(view.k))));for(let j=1;j<c;j++)o.push([px+(x-px)*j/c,py+(y-py)*j/c])}o.push([x,y])}});return o};
 const thin=P=>{const n=Math.ceil(P.length/40);return P.filter((_,i)=>i%n===0)};
-const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,k=1/Math.sqrt(view.k),P=thin(sp0(a)),need=(R0(a)+30)*k,others=Object.values(pts).filter(o=>o.id!==a.id),
+const near=(a,b)=>{const m=Math.hypot(a.x,a.y)||1,k=1/Math.sqrt(view.k),P=thin(sp0(a)),need=(R0(a)+55)*k,others=Object.values(pts).filter(o=>o.id!==a.id),
   dr=others.filter(o=>CXY[o.id]&&hasP(o)).map(o=>thin(sp0(o)).map(p=>[CXY[o.id][0]+p[0],CXY[o.id][1]+p[1]])).flat();let best=null;
   // the drawing stays inside the circle, clear of every marker, label and other drawing, and far enough from its dot to show a line to it
-  const okAt=(cx,cy)=>P.every(p=>{const x=cx+p[0],y=cy+p[1];return Math.hypot(x-a.x,y-a.y)>=need&&Math.hypot(x,y)<=R-4*k&&others.every(o=>Math.hypot(x-o.x,y-o.y)>=(R0(o)+8)*k&&!(Math.abs(x-o.x)<(((o.title||'').length*4.2)+6)*k&&y>o.y+R0(o)*k&&y<o.y+(R0(o)+34)*k))&&dr.every(q=>Math.hypot(x-q[0],y-q[1])>=12*k)});
+  const okAt=(cx,cy)=>P.every(p=>{const x=cx+p[0],y=cy+p[1];return Math.hypot(x-a.x,y-a.y)>=need&&Math.hypot(x,y)<=R-4*k&&others.every(o=>Math.hypot(x-o.x,y-o.y)>=(R0(o)+8)*k&&!(Math.abs(x-o.x)<(((o.title||'').length*4.2)+6)*k&&y>o.y+R0(o)*k&&y<o.y+(R0(o)+34)*k))});
   for(const f of [0]){const bx=a.x+(b.x-a.x)*f,by=a.y+(b.y-a.y)*f,a0=Math.atan2(-by,-bx);
     for(const da of [0,.12,-.12,.25,-.25]){const ux=Math.cos(a0+da),uy=Math.sin(a0+da);
       for(let D=0;D<900*k;D+=4*k){if(okAt(bx+ux*D,by+uy*D)){if(!best||D<best.D)best={D,c:[bx+ux*D,by+uy*D]};break}}}
     if(best)break}
+  if(best&&CXY[b.id]&&hasP(b)){ // the pair's drawings meet: slide toward the partner's drawing until the strokes touch
+    const PD=spd(a),Q=spd(b).map(p=>[CXY[b.id][0]+p[0],CXY[b.id][1]+p[1]]),gap=(c)=>{let g=1e9;for(const p of PD)for(const q of Q){const d=Math.hypot(c[0]+p[0]-q[0],c[1]+p[1]-q[1]);if(d<g)g=d}return g},tx=CXY[b.id][0]-best.c[0],ty=CXY[b.id][1]-best.c[1],tl=Math.hypot(tx,ty)||1;let c=best.c;
+    let g0=gap(c);for(let i=0;i<150&&g0>3*k;i++){const n=[c[0]+tx/tl*3*k,c[1]+ty/tl*3*k],g1=gap(n);if(!okAt(n[0],n[1])||g1>g0+k)break;c=n;g0=g1}
+    best={c}}
   if(best)return best.c;const ux=-a.x/m,uy=-a.y/m;return[a.x+ux*(R0(a)+rd(a)+14)*k,a.y+uy*(R0(a)+rd(a)+14)*k]};
 let HM={},CXY={};
 // where each drawing sits is derived on every draw, never stored
