@@ -51,17 +51,21 @@ function blobUrl(id){return /^https?:/.test(id)?id:SUPA_URL+'/storage/v1/object/
 function makeSupabase(){
   const sb=window.supabase.createClient(SUPA_URL,SUPA_KEY),subs=[];
   const fetchColl=async(name,filters)=>{let q=sb.from('docs').select('id,data').eq('coll',name);filters.forEach(([f,v])=>{q=q.eq('data->>'+f,v)});const{data,error}=await q;if(error)throw error;return{docs:(data||[]).map(r=>({id:r.id,data:()=>r.data}))}};
-  // changes are batched: a burst of edits (Arrange, dragging) triggers one re-read per collection, not one per edit per viewer
-  const pend=new Set;let tmr=null;
-  const refresh=name=>{pend.add(name||'*');clearTimeout(tmr);tmr=setTimeout(()=>{const all=pend.has('*'),want=new Set(pend);pend.clear();subs.filter(s=>all||want.has(s.name)).forEach(s=>s.refresh())},400)};
-  sb.channel('docs-changes').on('postgres_changes',{event:'*',schema:'public',table:'docs'},pl=>refresh((pl.new&&pl.new.coll)||(pl.old&&pl.old.coll))).subscribe();
+  // each viewer keeps its own copy of every collection and applies changes as they arrive (no re-reading the table per edit)
+  const match=(s,d)=>s.filters.every(([f,v])=>String(d&&d[f])===String(v)),emit=s=>{clearTimeout(s.t);s.t=setTimeout(()=>s.cb({docs:[...s.map.values()].map(r=>({id:r.id,data:()=>r.data}))}),120)};
+  const load=s=>fetchColl(s.name,s.filters).then(r=>{s.map=new Map(r.docs.map(d=>[d.id,{id:d.id,data:d.data()}]));emit(s)}).catch(e=>s.err&&s.err(e));
+  const resync=()=>subs.forEach(load);let was=false,hid=0;
+  sb.channel('docs-changes').on('postgres_changes',{event:'*',schema:'public',table:'docs'},pl=>{const row=pl.new&&pl.new.id?pl.new:null,coll=(row&&row.coll)||(pl.old&&pl.old.coll),id=(row&&row.id)||(pl.old&&pl.old.id);subs.filter(s=>s.name===coll).forEach(s=>{if(row&&match(s,row.data))s.map.set(id,{id,data:row.data});else s.map.delete(id);emit(s)})}).subscribe(st=>{if(st==='SUBSCRIBED'){if(was)resync();was=true}});
+  // a phone that slept or lost signal catches up when it comes back
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){hid=Date.now();return}if(hid&&Date.now()-hid>4000)resync()});window.addEventListener('online',resync);
+  const local=(name,fn)=>subs.filter(s=>s.name===name).forEach(s=>{fn(s);emit(s)});
   const query=(name,filters)=>({
     where:(f,op,v)=>query(name,[...filters,[f,v]]),
     get:()=>fetchColl(name,filters),
-    onSnapshot(cb,err){const s={name,refresh:()=>fetchColl(name,filters).then(cb).catch(e=>err&&err(e))};subs.push(s);s.refresh();return()=>{const i=subs.indexOf(s);if(i>=0)subs.splice(i,1)}},
+    onSnapshot(cb,err){const s={name,filters,cb,err,map:new Map};subs.push(s);load(s);return()=>{const i=subs.indexOf(s);if(i>=0)subs.splice(i,1)}},
     doc:id=>({
-      set:async d=>{const{error}=await sb.from('docs').upsert({coll:name,id,data:d});if(error)throw error;refresh(name)},
-      delete:async()=>{const{error}=await sb.from('docs').delete().eq('coll',name).eq('id',id);if(error)throw error;refresh(name)}})});
+      set:async d=>{const{error}=await sb.from('docs').upsert({coll:name,id,data:d});if(error)throw error;local(name,s=>{if(match(s,d))s.map.set(id,{id,data:d});else s.map.delete(id)})},
+      delete:async()=>{const{error}=await sb.from('docs').delete().eq('coll',name).eq('id',id);if(error)throw error;local(name,s=>s.map.delete(id))}})});
   // photos are shrunk before upload (phone photos are several MB; the map shows them at a few hundred px)
   const shrink=async f=>{if(!/^image\/(jpeg|png|webp|heic|heif)$/i.test(f.type||''))return f;try{const bm=await createImageBitmap(f,{imageOrientation:'from-image'}),m=1600,sc=Math.min(1,m/Math.max(bm.width,bm.height)),c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);const png=/png/i.test(f.type),b=await new Promise(r=>c.toBlob(r,png?'image/png':'image/jpeg',.85));if(!b||b.size>=f.size)return f;return new File([b],f.name.replace(/\.[a-z0-9]+$/i,'')+(png?'.png':'.jpg'),{type:b.type})}catch(e){return f}};
   const assets={upload:async f=>{f=await shrink(f);const ext=(f.name.match(/\.[a-z0-9]+$/i)||[''])[0].toLowerCase(),path=(crypto.randomUUID?crypto.randomUUID():Date.now()+''+Math.random().toString(36).slice(2))+ext;
@@ -99,8 +103,11 @@ $('#th').onclick=()=>{const r=document.documentElement,n=r.dataset.theme==='dark
 // storage
 function local(){try{localStorage.setItem('ll_local',JSON.stringify({pts,lns}))}catch(e){}}
 function loadLocal(){try{const d=JSON.parse(localStorage.getItem('ll_local')||'{}');pts=d.pts||{};lns=d.lns||{}}catch(e){}}
-async function put(name,store,o){if(ro)return;if(draft&&draft.id===o.id)draft=null;store[o.id]=o;draw();if(db){try{await db.collection(name).doc(o.id).set({...o})}catch(e){console.error(e)}}else local()}
-async function del(name,store,id){if(ro)return;delete store[id];draw();if(db){try{await db.collection(name).doc(id).delete()}catch(e){console.error(e)}}else local()}
+function toast(m){let t=$('#toast');if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);background:var(--panel);color:var(--fg);border:1px solid var(--line);padding:8px 12px;font-size:12px;z-index:60;max-width:90%';document.body.append(t)}t.textContent=m;t.style.display=m?'block':'none';clearTimeout(t.h);if(m)t.h=setTimeout(()=>t.style.display='none',4000)}
+// writes are retried a few times, and a failure is shown instead of silently dropped
+async function tryW(fn){for(let i=0;i<4;i++){try{await fn();return true}catch(e){console.error(e);await new Promise(r=>setTimeout(r,500*(i+1)**2))}}toast("Couldn't save that change. Check your connection and try again.");return false}
+async function put(name,store,o){if(ro)return;if(draft&&draft.id===o.id)draft=null;store[o.id]=o;draw();if(db){await tryW(()=>db.collection(name).doc(o.id).set({...o}))}else local()}
+async function del(name,store,id){if(ro)return;delete store[id];draw();if(db){await tryW(()=>db.collection(name).doc(id).delete())}else local()}
 function sub(name,store){db.collection(name).onSnapshot(s=>{if(dragging)return;for(const k in store)delete store[k];s.docs.forEach(d=>{store[d.id]={...d.data(),id:d.id}});if(store===pts)for(const k in pts)ring(pts[k]);if(!fitted&&Object.keys(pts).length){fitted=1;fit()}draw();if(sel&&!pts[sel]&&!(draft&&draft.id===sel)){sel=null;panel()}},e=>console.error(e))}
 (async()=>{
   try{if(SUPA_ON&&window.supabase){const A=makeSupabase();db=A.db;assets=A.assets}}catch(e){console.error(e)}
