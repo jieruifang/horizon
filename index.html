@@ -51,7 +51,9 @@ function blobUrl(id){return /^https?:/.test(id)?id:SUPA_URL+'/storage/v1/object/
 function makeSupabase(){
   const sb=window.supabase.createClient(SUPA_URL,SUPA_KEY),subs=[];
   const fetchColl=async(name,filters)=>{let q=sb.from('docs').select('id,data').eq('coll',name);filters.forEach(([f,v])=>{q=q.eq('data->>'+f,v)});const{data,error}=await q;if(error)throw error;return{docs:(data||[]).map(r=>({id:r.id,data:()=>r.data}))}};
-  const refresh=name=>subs.filter(s=>!name||s.name===name).forEach(s=>s.refresh());
+  // changes are batched: a burst of edits (Arrange, dragging) triggers one re-read per collection, not one per edit per viewer
+  const pend=new Set;let tmr=null;
+  const refresh=name=>{pend.add(name||'*');clearTimeout(tmr);tmr=setTimeout(()=>{const all=pend.has('*'),want=new Set(pend);pend.clear();subs.filter(s=>all||want.has(s.name)).forEach(s=>s.refresh())},400)};
   sb.channel('docs-changes').on('postgres_changes',{event:'*',schema:'public',table:'docs'},pl=>refresh((pl.new&&pl.new.coll)||(pl.old&&pl.old.coll))).subscribe();
   const query=(name,filters)=>({
     where:(f,op,v)=>query(name,[...filters,[f,v]]),
@@ -60,8 +62,10 @@ function makeSupabase(){
     doc:id=>({
       set:async d=>{const{error}=await sb.from('docs').upsert({coll:name,id,data:d});if(error)throw error;refresh(name)},
       delete:async()=>{const{error}=await sb.from('docs').delete().eq('coll',name).eq('id',id);if(error)throw error;refresh(name)}})});
-  const assets={upload:async f=>{const ext=(f.name.match(/\.[a-z0-9]+$/i)||[''])[0].toLowerCase(),path=(crypto.randomUUID?crypto.randomUUID():Date.now()+''+Math.random().toString(36).slice(2))+ext;
-    const{error}=await sb.storage.from('uploads').upload(path,f,{contentType:f.type||'application/octet-stream'});if(error)throw error;return{id:path}}};
+  // photos are shrunk before upload (phone photos are several MB; the map shows them at a few hundred px)
+  const shrink=async f=>{if(!/^image\/(jpeg|png|webp|heic|heif)$/i.test(f.type||''))return f;try{const bm=await createImageBitmap(f,{imageOrientation:'from-image'}),m=1600,sc=Math.min(1,m/Math.max(bm.width,bm.height)),c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);const png=/png/i.test(f.type),b=await new Promise(r=>c.toBlob(r,png?'image/png':'image/jpeg',.85));if(!b||b.size>=f.size)return f;return new File([b],f.name.replace(/\.[a-z0-9]+$/i,'')+(png?'.png':'.jpg'),{type:b.type})}catch(e){return f}};
+  const assets={upload:async f=>{f=await shrink(f);const ext=(f.name.match(/\.[a-z0-9]+$/i)||[''])[0].toLowerCase(),path=(crypto.randomUUID?crypto.randomUUID():Date.now()+''+Math.random().toString(36).slice(2))+ext;
+    const{error}=await sb.storage.from('uploads').upload(path,f,{contentType:f.type||'application/octet-stream',cacheControl:'31536000'});if(error)throw error;return{id:path}}};
   return{db:{collection:n=>query(n,[])},assets}}
 </script>
 <script>
